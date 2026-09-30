@@ -19,6 +19,11 @@ export class Science {
   progress: Record<string, number> = {};
   completed = new Set<string>();
 
+  /** Experiment types currently aboard (mounted or packed). */
+  get owned() {
+    return new Set(G.racks.all().map((r) => r.type));
+  }
+
   /** Prints a result slip out of a rack. points 0 means the run produced nothing useful. */
   printSlip(rack: Rack, localPos: THREE.Vector3, title: string, lines: string[], report: Report | null) {
     const rows = lines.map((l) => `<div>${l}</div>`).join('');

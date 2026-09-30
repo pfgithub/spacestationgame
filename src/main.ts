@@ -16,6 +16,8 @@ import { Power } from './power';
 import { makePaper } from './docs';
 import { Science } from './science';
 import './experiments';
+import { Cargo } from './cargo';
+import { newOrderForm } from './catalog';
 
 const app = document.getElementById('app')!;
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
@@ -46,6 +48,8 @@ G.racks = new Racks();
 G.days = new Days();
 G.power = new Power();
 G.science = new Science();
+G.cargo = new Cargo();
+G.days.nightly.push(() => G.cargo.night());
 
 document.addEventListener('pointerlockchange', () => {
   if (!G.audio && document.pointerLockElement) {
@@ -98,6 +102,12 @@ function buildInitialStation() {
   stick('proc-crystal', new THREE.Vector3(5.2, -1.58, 0.9), new THREE.Vector3(0, 1, 0));
   stick('proc-botany', new THREE.Vector3(4.2, -1.58, 0.9), new THREE.Vector3(0, 1, 0));
   stick('proc-fluid', new THREE.Vector3(4.2, -1.58, -0.9), new THREE.Vector3(0, 1, 0));
+
+  R.mountRack(R.create('dockpanel'), [0, 0, -1], 0);
+  stick('proc-docking', new THREE.Vector3(0.9, -1.58, -4.2), new THREE.Vector3(0, 1, 0));
+  // the first vehicle is already docked when you arrive
+  G.cargo.arrive([newOrderForm()]);
+  G.cargo.dock();
 }
 buildInitialStation();
 
@@ -154,13 +164,18 @@ function updateInteraction() {
 
 function simulate(dt: number) {
   G.time += dt;
-  G.player.update(dt);
+  if (G.cargo.docking) {
+    G.cargo.updateDocking(dt);
+  } else {
+    G.player.update(dt);
+    G.player.applyCamera(camera);
+  }
   G.station.update(dt);
+  G.cargo.update(dt);
   G.items.update(dt);
   G.racks.update(dt);
   G.power.update(dt);
-  G.player.applyCamera(camera);
-  updateInteraction();
+  if (!G.cargo.docking) updateInteraction();
 }
 
 // ---- loop ----

@@ -198,6 +198,8 @@ export class Station {
       else this.doors.delete(doorKey(cell, d));
     }
     this.modules.delete(cellKey(cell));
+    this.group.remove(m.group);
+    m.group.traverse((o) => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
   }
 
   makeDoor(cell: Cell, d: Dir, kind: FaceKind, open: boolean) {
@@ -213,6 +215,7 @@ export class Station {
       mesh: new THREE.Group(),
       box: aabb(center.clone().sub(half), center.clone().add(half)),
     };
+    if (kind === 'port') door.interlock = () => 'The docking port is sealed: there is no vehicle on the other side.';
     this.doors.set(key, door);
     return door;
   }

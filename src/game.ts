@@ -10,6 +10,7 @@ import type { Racks } from './racks';
 import type { Days } from './days';
 import type { Power } from './power';
 import type { Science } from './science';
+import type { Cargo } from './cargo';
 
 /** Global game context, filled in by main.ts. */
 export const G = {} as {
@@ -27,6 +28,7 @@ export const G = {} as {
   days: Days;
   power: Power;
   science: Science;
+  cargo: Cargo;
   /** Seconds of game time elapsed. */
   time: number;
   day: number;

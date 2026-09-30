@@ -43,3 +43,13 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .paper input[type=checkbox] { width: 18px; height: 18px; }
 .paper .total { text-align: right; font-weight: bold; margin-top: 10px; }
 .paper .note { font-size: 13px; color: #555; font-style: italic; }
+
+.periscope { position: fixed; inset: 0; pointer-events: none; z-index: 5; color: #9cff9c; font-family: 'Courier New', monospace; text-shadow: 0 0 4px #0f0;
+  background: radial-gradient(circle at center, rgba(0,0,0,0) 38vmin, rgba(0,0,0,0.97) 40vmin); }
+.periscope.hidden { display: none; }
+.periscope .reticle { position: absolute; left: 50%; top: 50%; width: 30vmin; height: 30vmin; transform: translate(-50%, -50%); border: 1px solid rgba(160,255,160,0.7); border-radius: 50%; }
+.periscope .reticle::before, .periscope .reticle::after { content: ''; position: absolute; background: rgba(160,255,160,0.7); }
+.periscope .reticle::before { left: -20vmin; right: -20vmin; top: 50%; height: 1px; }
+.periscope .reticle::after { top: -20vmin; bottom: -20vmin; left: 50%; width: 1px; }
+.periscope .readout { position: absolute; right: 8%; top: 12%; font-size: 20px; line-height: 1.5; }
+.periscope .help { position: absolute; left: 0; right: 0; bottom: 5%; text-align: center; font-size: 14px; opacity: 0.8; }
