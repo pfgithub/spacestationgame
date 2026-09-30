@@ -88,7 +88,7 @@ export class Cargo {
     this.hud.className = 'periscope hidden';
     this.hud.innerHTML = `<div class="reticle"></div><div class="readout"></div>
       <div class="msg"></div>
-      <div class="help">S/W close / open range &middot; A/D move target right / left &middot; Shift/Space move target up / down &middot; R start the approach again &middot; TAB leave controls</div>`;
+      <div class="help">W/S close / open range &middot; A/D move target right / left &middot; Shift/Space move target up / down &middot; R start the approach again &middot; TAB leave controls</div>`;
     document.body.appendChild(this.hud);
   }
 
@@ -327,7 +327,7 @@ export class Cargo {
     const a = 1.2 * dt;
     this.vel.x += axis(inp.isDown('KeyD'), inp.isDown('KeyA')) * a;
     this.vel.y += axis(inp.isDown('Space'), inp.isDown('ShiftLeft') || inp.isDown('ShiftRight')) * a;
-    this.vel.z = THREE.MathUtils.clamp(this.vel.z + axis(inp.isDown('KeyW'), inp.isDown('KeyS')) * a, -3, 3);
+    this.vel.z = THREE.MathUtils.clamp(this.vel.z + axis(inp.isDown('KeyS'), inp.isDown('KeyW')) * a, -3, 3);
     this.pos.addScaledVector(this.vel, dt);
     const range = DOCKED_Z - this.pos.z;
     if (range <= 0) {
@@ -446,7 +446,7 @@ view straight out of the docking port.</li>
 <li>Steer the <b>docking target</b> (the black disc with the white cross) into the middle of the reticle:
 A and D move it right and left, Shift and Space move it up and down. The HORIZ and VERT readouts show how far off
 centre it is. The thrusters are strong, but the vehicle keeps drifting until you push it back the other way.</li>
-<li>Close in with S; W slows the approach or backs the vehicle off.</li>
+<li>Close in with W; S slows the approach or backs the vehicle off.</li>
 <li>If it all goes wrong, R sends the vehicle back to the hold point to start again.</li>
 <li>The docking ring is forgiving: anywhere near the centre, slower than about <b>1 m/s</b>, and it will latch on.
 Too fast or too far off and the vehicle bounces off. No harm done &mdash; try again.</li>
