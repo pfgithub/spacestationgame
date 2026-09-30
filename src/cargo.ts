@@ -193,10 +193,15 @@ export class Cargo {
       }
       orderLines.push(`<p>Your order has been filled and is aboard this vehicle (${total} points):</p><ul>${names.map((n) => `<li>${n}</li>`).join('')}</ul>`);
     }
-    const other = sent.filter((i) => i.data.report === undefined && i.data.doc !== 'order' && !i.data.slip);
-    const thanks = other.length
-      ? `<p>We also received: ${other.map((o) => o.name.toLowerCase()).join(', ')}. ${other.some((o) => o.kind === 'crate') ? 'We did not expect you to send back equipment, but it has been put into storage.' : ''}</p>`
+    // anything that isn't mail or rubbish was surely sent by mistake: it comes back on the next vehicle
+    const rubbish = (i: Item) => i.data.report !== undefined || i.data.doc === 'order' || i.data.blown || i.data.spent
+      || (i.kind === 'paper' && !i.data.doc);
+    const returned = sent.filter((i) => !rubbish(i));
+    const thanks = returned.length
+      ? `<p>The last vehicle also brought down: ${returned.map((o) => o.name).join(', ')}. We assume this was a mistake,
+        and ${returned.length === 1 ? 'it is' : 'they are'} aboard this vehicle.</p>`
       : '';
+    deliveries.push(...returned.map((i) => G.items.adopt(i)));
     const reportTable = lines.length
       ? `<table><tr><th>Experiment</th><th>Result</th><th>Points</th></tr>${lines.join('')}<tr><th colspan="2">Total credited</th><th>${sum}</th></tr></table>`
       : `<p>No science reports were received on the last vehicle.</p>`;

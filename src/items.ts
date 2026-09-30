@@ -103,6 +103,15 @@ export class Items {
     parent?.add(mesh);
   }
 
+  /** Brings a removed item back into existence (e.g. returned by the ground). */
+  adopt(item: Item) {
+    if (!this.list.includes(item)) this.list.push(item);
+    item.state = 'stowed';
+    item.vel.set(0, 0, 0);
+    item.spin.set(0, 0, 0);
+    return item;
+  }
+
   remove(item: Item) {
     if (this.held === item) this.held = null;
     item.mesh.parent?.remove(item.mesh);

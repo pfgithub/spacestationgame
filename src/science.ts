@@ -28,7 +28,7 @@ export class Science {
   printSlip(rack: Rack, localPos: THREE.Vector3, title: string, lines: string[], report: Report | null) {
     const rows = lines.map((l) => `<div>${l}</div>`).join('');
     const html = `<h1>${title}</h1><div class="meta">${rack.title} rack &middot; day ${G.day}</div>${rows}
-      ${report ? `<p style="margin-top:18px">Run ${report.run}. Return this slip to the ground.</p>` : ''}`;
+      ${report ? `<p style="margin-top:18px">Run ${report.run}. Worth ${report.points} points once it reaches the ground.</p>` : ''}`;
     const slip = makeLetter(title, html, { typed: true, color: '#fbf8ef', report, slip: true });
     const world = localPos.clone().applyMatrix4(rack.group.matrixWorld);
     const out = new THREE.Vector3(0, 0, 1).applyQuaternion(rack.group.quaternion);
