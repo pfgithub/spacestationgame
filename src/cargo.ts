@@ -222,7 +222,7 @@ export class Cargo {
   }
 
   processMail(sent: Item[]): Item[] {
-    const { lines, sum } = G.science.receive(sent);
+    const { lines, sum, finished } = G.science.receive(sent);
     const deliveries: Item[] = [];
     const orderLines: string[] = [];
     const forms = sent.filter((i) => i.data.doc === 'order');
@@ -249,13 +249,20 @@ export class Cargo {
     }
     // anything that isn't mail or rubbish was surely sent by mistake: it comes back on the next vehicle
     const rubbish = (i: Item) => i.data.report !== undefined || i.data.doc === 'order' || i.data.blown || i.data.spent
-      || (i.kind === 'paper' && !i.data.doc) || i.data.rack?.broken || i.data.dead || i.data.spoiled;
+      || (i.kind === 'paper' && !i.data.doc) || i.data.rack?.broken || i.data.rack?.spent || i.data.dead || i.data.spoiled;
     const returned = sent.filter((i) => !rubbish(i));
     const scrapped = sent.filter((i) => i.data.rack?.broken);
-    const scrapNote = scrapped.length
+    const retired = sent.filter((i) => i.data.rack?.spent && !i.data.rack?.broken);
+    const scrapNote = (scrapped.length
       ? `<p>We received the damaged ${scrapped.map((s) => s.data.rack.title.toLowerCase()).join(' and ')}. It is beyond repair and has been
         scrapped. You may order a replacement whenever you like.</p>`
-      : '';
+      : '') + (retired.length
+      ? `<p>We received the used ${retired.map((s) => s.data.rack.title.toLowerCase()).join(' and ')}. Thank you; it has been retired.</p>`
+      : '') + (finished.length
+      ? `<p>Congratulations: the ${finished.map((r) => r.expTitle.toLowerCase().replace(/ \(.*\)$/, '')).join(' and ')} series ${finished.length === 1 ? 'is' : 'are'}
+        complete. The ${finished.map((r) => (r.apparatus ?? 'apparatus').toLowerCase()).join(' and ')} ${finished.length === 1 ? 'is' : 'are'} now spent &mdash; please
+        send ${finished.length === 1 ? 'it' : 'them'} home. If you would like to repeat an experiment, order a new one; repeats earn half the points.</p>`
+      : '');
     const thanks = returned.length
       ? `<p>The last vehicle also brought down: ${returned.map((o) => o.name).join(', ')}. We assume this was a mistake,
         and ${returned.length === 1 ? 'it is' : 'they are'} aboard this vehicle.</p>`

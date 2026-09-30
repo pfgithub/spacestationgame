@@ -62,3 +62,4 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .hints b { display: inline-block; margin-right: 8px; padding: 0 5px; border: 1px solid rgba(255,255,255,0.5); border-radius: 3px; font-weight: normal; font-size: 11px; }
 .periscope .readout { font-size: 17px; }
 .periscope .msg { position: absolute; left: 0; right: 0; top: 76%; text-align: center; font-size: 17px; color: #ffb35c; text-shadow: 0 0 4px #f60; }
+.paper .repeat { font-size: 13px; color: #a3261f; font-weight: bold; }

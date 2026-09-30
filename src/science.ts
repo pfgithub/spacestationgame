@@ -9,6 +9,9 @@ export interface Report {
   expTitle: string;
   run: number;
   points: number;
+  /** The last run of the apparatus's series. */
+  final?: boolean;
+  apparatus?: string;
 }
 
 /** Tracks the agency's ledger of science points. Points are credited when reports reach the ground. */
@@ -32,11 +35,17 @@ export class Science {
     return new Set(G.racks.all().map((r) => r.type));
   }
 
+  /** Types aboard that still work: not spent or destroyed. */
+  get ownedActive() {
+    return new Set(G.racks.all().filter((r) => !(r as { spent?: boolean }).spent && !(r as { broken?: boolean }).broken).map((r) => r.type));
+  }
+
   /** Prints a result slip out of a rack. points 0 means the run produced nothing useful. */
   printSlip(rack: Rack, localPos: THREE.Vector3, title: string, lines: string[], report: Report | null) {
     const rows = lines.map((l) => `<div>${l}</div>`).join('');
     const html = `<h1>${title}</h1><div class="meta">${rack.title} rack &middot; day ${G.day}</div>${rows}
-      ${report ? `<p style="margin-top:18px">Run ${report.run}. Worth ${report.points} points once it reaches the ground.</p>` : ''}`;
+      ${report ? `<p style="margin-top:18px">Run ${report.run}. Worth ${report.points} points once it reaches the ground.</p>` : ''}
+      ${report?.final ? `<p><b>SERIES COMPLETE.</b> This apparatus is now spent. Return it to the ground.</p>` : ''}`;
     const slip = makeLetter(title, html, { typed: true, color: '#fbf8ef', report, slip: true });
     const world = localPos.clone().applyMatrix4(rack.group.matrixWorld);
     const out = new THREE.Vector3(0, 0, 1).applyQuaternion(rack.group.quaternion);
@@ -64,7 +73,8 @@ export class Science {
     }
     this.balance += sum;
     this.totalEarned += sum;
-    return { lines, sum };
+    const finished = items.map((i) => i.data.report as Report | null).filter((r): r is Report => !!r?.final);
+    return { lines, sum, finished };
   }
 }
 

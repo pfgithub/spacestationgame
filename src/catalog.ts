@@ -14,6 +14,8 @@ export interface CatalogEntry {
   deliver(): Item[];
   /** Hidden until this returns true. */
   available?(): boolean;
+  /** For experiments: the rack type, so the form can say when it would be a repeat. */
+  exp?: string;
 }
 
 export const CATALOG: CatalogEntry[] = [];
@@ -21,9 +23,9 @@ export const CATALOG: CatalogEntry[] = [];
 /** A standard experiment order: its rack, its procedure and any extras. Hidden while one is aboard. */
 function experiment(id: string, name: string, cost: number, blurb: string, rack: string, proc: string, extras: () => Item[] = () => []): CatalogEntry[] {
   return [{
-    id, name, cost, section: 'Experiments', blurb: `${blurb} Rack and procedure included.`,
+    id, name, cost, section: 'Experiments', blurb: `${blurb} Rack and procedure included.`, exp: rack,
     deliver: () => [rackCrate(rack), makePaper(proc), ...extras()],
-    available: () => !G.science.owned.has(rack),
+    available: () => !G.science.ownedActive.has(rack),
   }];
 }
 
@@ -33,6 +35,8 @@ const fuel = (n: number) => Array.from({ length: n }, () => G.items.create('fuel
 
 function rackCrate(type: string) {
   const rack = G.racks.create(type);
+  // an experiment that has been done before is only worth half as much the second time round
+  if (G.science.completed.has(type)) (rack as { repeat?: boolean }).repeat = true;
   return G.items.create('crate', `${rack.title} rack (packed)`, { rack });
 }
 
@@ -53,6 +57,7 @@ CATALOG.push(
   },
   ...experiment('exp-droplet', 'Student droplet kit', 0, 'A school class\'s experiment on water in weightlessness. Free of charge, with the pupils\' thanks.',
     'droplet', 'proc-droplet'),
+  ...experiment('exp-crystal', 'Crystal furnace', 15, 'A protein crystal growth furnace, like the one the station was launched with.', 'crystal', 'proc-crystal'),
   ...experiment('exp-ergometer', 'Exercise study', 12, 'A cycle ergometer, and a daily exercise study to go with it.', 'ergometer', 'proc-ergometer'),
   ...experiment('exp-botany', 'Plant growth study', 20, 'A plant habitat and six days in the life of a small plant.', 'botany', 'proc-botany'),
   ...experiment('exp-fluid', 'Fluid physics study', 25, 'Photographs of bubbles in weightless liquids.', 'fluid', 'proc-fluid'),
@@ -60,13 +65,13 @@ CATALOG.push(
     id: 'exp-micro', name: 'Microbiology kit', cost: 30, section: 'Experiments',
     blurb: 'An incubator and a portable air sampler, for surveying the microbes living in each module.',
     deliver: () => [rackCrate('incubator'), G.items.create('airsampler', 'Air sampler', { samples: [], incubated: 0 }), makePaper('proc-microbiology')],
-    available: () => !G.science.owned.has('incubator'),
+    available: () => !G.science.ownedActive.has('incubator'), exp: 'incubator',
   },
   {
     id: 'exp-yeast', name: 'Yeast fermentation study', cost: 35, section: 'Experiments',
     blurb: 'Grow yeast, freeze it, and send it home for analysis. Includes a sample freezer and three culture bags. Needs the incubator from the microbiology kit.',
     deliver: () => [rackCrate('freezer'), ...yeastBags(3), makePaper('proc-yeast')],
-    available: () => G.science.owned.has('incubator') && !G.science.owned.has('freezer'),
+    available: () => G.science.owned.has('incubator') && !G.science.ownedActive.has('freezer'), exp: 'freezer',
   },
   {
     id: 'exp-dosimetry', name: 'Radiation dosimetry survey', cost: 35, section: 'Experiments',
@@ -76,13 +81,13 @@ CATALOG.push(
       const badges = (crate.data.rack as import('./experiments2').DosimetryRack).makeBadges();
       return [crate, makePaper('proc-dosimetry'), ...badges];
     },
-    available: () => !G.science.owned.has('dosimetry'),
+    available: () => !G.science.ownedActive.has('dosimetry'), exp: 'dosimetry',
   },
   {
     id: 'exp-exposure', name: 'Materials exposure panel', cost: 40, section: 'Experiments',
     blurb: 'A panel mounted outside the station that exposes material samples to space. Two sample trays included.',
     deliver: () => [rackCrate('exposure'), ...trays(2), makePaper('proc-exposure')],
-    available: () => !G.science.owned.has('exposure'),
+    available: () => !G.science.ownedActive.has('exposure'), exp: 'exposure',
   },
   ...experiment('exp-combustion', 'Combustion chamber', 45, 'Studies flames in weightlessness. Three fuel cartridges included. Handle with care.',
     'combustion', 'proc-combustion', () => fuel(3)),
@@ -170,8 +175,7 @@ registerDoc('order', {
     const div = document.createElement('div');
     const sel = item.data.selected as string[];
     div.innerHTML = `<h1>SUPPLY ORDER FORM</h1>
-      <div class="meta">Tick what you would like. Leave this form in the cargo vehicle before you sleep.<br>
-      Experiments you have finished can be run again as repeat series, for half the points.<br>
+      <div class="meta">Tick what you would like. Leave this form in the cargo vehicle, and release the vehicle.<br>
       Balance on your last statement: <b>${G.science.balance} points</b></div>`;
     let section = '';
     for (const c of CATALOG) {
@@ -196,7 +200,9 @@ registerDoc('order', {
       row.appendChild(cb);
       const name = document.createElement('span');
       name.className = 'name';
-      name.innerHTML = `<b>${c.name}</b><br><span class="note">${c.blurb}</span>`;
+      const repeat = c.exp && G.science.completed.has(c.exp)
+        ? '<br><span class="repeat">You have done this experiment before: a repeat earns only half the science points.</span>' : '';
+      name.innerHTML = `<b>${c.name}</b><br><span class="note">${c.blurb}</span>${repeat}`;
       row.appendChild(name);
       const cost = document.createElement('span');
       cost.className = 'cost';

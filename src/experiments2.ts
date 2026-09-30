@@ -242,7 +242,7 @@ export class EarthCamRack extends Experiment {
     film.data.report = null;
     if (good.size > 0) {
       film.data.report = this.completeRun(`Earth photography (${good.size} of ${TARGETS.length} targets)`, good.size);
-      film.name = `Film: Earth photographs, roll ${film.data.report.run}`;
+      if (film.data.report) film.name = `Film: Earth photographs, roll ${film.data.report.run}`;
     }
     this.frames = [];
     this.advanced = true;

@@ -540,7 +540,7 @@ export function initExperiments3() {
     for (const item of items) {
       if (item.kind !== 'yeastbag') continue;
       const ok = item.data.activated && item.data.frozen && !item.data.dead;
-      const freezer = G.racks.all().find((r) => r.type === 'freezer') as FreezerRack | undefined;
+      const freezer = G.racks.all().find((r) => r.type === 'freezer' && !(r as FreezerRack).spent) as FreezerRack | undefined;
       item.data.report = ok && freezer ? freezer.completeRun('Yeast fermentation') : null;
     }
   });

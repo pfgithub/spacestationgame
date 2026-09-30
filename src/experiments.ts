@@ -21,59 +21,54 @@ function chamber(parent: THREE.Object3D, x: number, y: number, w: number, h: num
 }
 
 /**
- * Shared pieces for experiment racks: run counting, series, power dependence.
- * After a full series the experiment carries on as a repeat series, worth half as much.
+ * Shared pieces for experiment racks: run counting, power dependence, and the apparatus wearing out.
+ * Once its series is complete an apparatus is spent: it gives no more credit and should go home. A new one can be
+ * ordered to repeat the experiment, for half the points.
  */
 export abstract class Experiment extends Rack {
   needsPower = true;
   abstract runsNeeded: number;
   abstract points: number;
   runs = 0;
-  series = 1;
+  /** This apparatus repeats an experiment that has already been done, for half the points. */
+  repeat = false;
+  /** The series is finished: no more credit from this apparatus. */
+  spent = false;
   /** A rack destroyed by misuse: it does nothing and should go home. */
   broken = false;
-  stamp?: THREE.Object3D;
 
-  /** Points each run is worth in the current series. */
+  /** Points each run is worth. */
   get award() {
-    return this.series > 1 ? Math.ceil(this.points / 2) : this.points;
+    return this.repeat ? Math.ceil(this.points / 2) : this.points;
   }
 
-  /** Records a successful run and returns the report for its slip / film / sample. */
-  completeRun(expTitle: string, multiplier = 1): Report {
-    const points = this.award * multiplier;
-    const series = this.series;
+  /** Records a successful run and returns the report for its slip / film / sample, or null if the apparatus is spent. */
+  completeRun(expTitle: string, multiplier = 1): Report | null {
+    if (this.spent) return null;
     this.runs++;
-    const run = this.runs;
     G.science.progress[this.type] = this.runs;
-    if (this.runs >= this.runsNeeded) {
+    const final = this.runs >= this.runsNeeded;
+    if (final) {
+      this.spent = true;
       G.science.completed.add(this.type);
-      this.series++;
-      this.runs = 0;
-      this.showStamp();
     }
-    return { exp: this.type, expTitle: series > 1 ? `${expTitle} (repeat series)` : expTitle, run, points };
-  }
-
-  showStamp() {
-    if (this.series < 2) return;
-    if (this.stamp) this.group.remove(this.stamp);
-    this.stamp = text(this.group, `SERIES ${this.series - 1} DONE · REPEATS HALF CREDIT`, 0, RACK_STAMP_Y, 1.8, 0.1, '#b01c10', '#f3eee0');
-    this.stamp.position.z = 0.4;
-    this.stamp.rotation.z = 0.03;
+    return {
+      exp: this.type, expTitle: this.repeat ? `${expTitle} (repeat)` : expTitle, run: this.runs,
+      points: this.award * multiplier, final, apparatus: this.title,
+    };
   }
 
   serialize(): Record<string, any> {
-    return { runs: this.runs, series: this.series, broken: this.broken };
+    return { runs: this.runs, repeat: this.repeat, spent: this.spent, broken: this.broken };
   }
   deserialize(d: Record<string, any>) {
     this.runs = d.runs ?? 0;
-    this.series = d.series ?? 1;
+    // older saves counted series instead
+    this.repeat = d.repeat ?? (d.series ?? 1) > 1;
+    this.spent = d.spent ?? false;
     this.broken = d.broken ?? false;
-    this.showStamp();
   }
 }
-const RACK_STAMP_Y = 0.78;
 
 // ------------------------------------------------------------------------------------------------
 // Protein crystal growth
