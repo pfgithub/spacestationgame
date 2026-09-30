@@ -21,5 +21,5 @@ npm run build    # static build into dist/
 | Left click | use |
 | Right click | grab / place / let go |
 | R | read the paper you are holding |
-| T | clip tether to an anchor (spacewalk) |
+| T or left click | clip tether to the yellow ring you are looking at (spacewalk) |
 | F (hold) | reel in tether |

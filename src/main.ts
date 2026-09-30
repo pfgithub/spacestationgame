@@ -18,6 +18,7 @@ import { Science } from './science';
 import './experiments';
 import { Cargo } from './cargo';
 import { newOrderForm } from './catalog';
+import { EVA } from './eva';
 
 const app = document.getElementById('app')!;
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
@@ -50,6 +51,7 @@ G.power = new Power();
 G.science = new Science();
 G.cargo = new Cargo();
 G.days.nightly.push(() => G.cargo.night());
+G.eva = new EVA();
 
 document.addEventListener('pointerlockchange', () => {
   if (!G.audio && document.pointerLockElement) {
@@ -105,6 +107,12 @@ function buildInitialStation() {
 
   R.mountRack(R.create('dockpanel'), [0, 0, -1], 0);
   stick('proc-docking', new THREE.Vector3(0.9, -1.58, -4.2), new THREE.Vector3(0, 1, 0));
+  R.mountRack(R.create('suit'), [0, 0, 1], 0);
+  R.mountRack(R.create('airlockctl'), [0, 0, 1], 1);
+  stick('proc-eva', new THREE.Vector3(0.6, -1.58, 4.4), new THREE.Vector3(0, 1, 0));
+  G.eva.setupInterlocks();
+  G.power.buildArrays();
+
   // the first vehicle is already docked when you arrive
   G.cargo.arrive([newOrderForm()]);
   G.cargo.dock();
@@ -128,7 +136,7 @@ function isItemMesh(o: THREE.Object3D | null) {
 
 function updateInteraction() {
   ray.set(camera.position, G.player.forward);
-  const hits = ray.intersectObjects([G.station.group, G.items.group, ...G.racks.list.map((r) => r.group)], true);
+  const hits = ray.intersectObjects([G.station.group, G.items.group, G.eva.anchors, ...G.racks.list.map((r) => r.group)], true);
   focused = null;
   let hit: THREE.Intersection | undefined;
   for (const h of hits) {
@@ -158,6 +166,7 @@ function updateInteraction() {
   }
   G.ui.setPrompt(primary, secondary);
   if (focused && G.input.clicked(0) && primary) focused.use?.();
+  if (focused?.anchor && G.input.wasPressed('KeyT') && primary) focused.use?.();
   if (G.input.clicked(2) && secondary) secondaryAction?.();
   if (G.input.wasPressed('KeyR') && held && !G.items.readHeld()) G.ui.toast(`Nothing to read on the ${held.name}`);
 }
@@ -168,6 +177,7 @@ function simulate(dt: number) {
     G.cargo.updateDocking(dt);
   } else {
     G.player.update(dt);
+    G.eva.update(dt);
     G.player.applyCamera(camera);
   }
   G.station.update(dt);
@@ -187,7 +197,7 @@ function frame(now: number) {
   G.world.update(G.time);
   const mod = G.station.moduleAt(G.player.pos);
   const held = G.items.held ? `<br>Holding: ${G.items.held.name}` : '';
-  G.ui.setStatus(`Day ${G.day}<br>${mod ? mod.name : 'OUTSIDE'}${held}`);
+  G.ui.setStatus(`Day ${G.day}<br>${mod ? mod.name : 'OUTSIDE'}${held}${G.eva.status()}`);
   G.ui.update();
   renderer.render(scene, camera);
   G.input.endFrame();

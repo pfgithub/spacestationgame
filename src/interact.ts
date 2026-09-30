@@ -10,6 +10,8 @@ export interface Interactable {
   /** When the player holds an item, a target may offer to accept it (right click). */
   acceptLabel?(item: import('./items').Item): string | null;
   accept?(item: import('./items').Item): void;
+  /** Marks tether anchor points (T key clips to them). */
+  anchor?: boolean;
   /** Max reach in metres (default 2.6). */
   range?: number;
 }

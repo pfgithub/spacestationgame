@@ -170,7 +170,9 @@ export class Items {
       G.audio?.click();
     } else {
       item.quat.copy(p.quat);
-      this.place(item, p.pos.clone().addScaledVector(p.forward, 0.6), p.vel.clone().addScaledVector(p.forward, 0.3));
+      // outside, let go gently so things stay where you leave them
+      const vel = G.station.isInside(p.pos) ? p.vel.clone().addScaledVector(p.forward, 0.3) : new THREE.Vector3();
+      this.place(item, p.pos.clone().addScaledVector(p.forward, 0.6), vel);
       item.spin.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(0.4);
     }
   }
