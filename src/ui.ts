@@ -36,11 +36,13 @@ export class UI {
         <div><b>Mouse</b> look</div>
         <div><b>W</b> push off (each push adds speed; tap to push sooner)</div>
         <div><b>S</b> slow down (hold to stop, then push backwards)</div>
+        <div><b>A / D</b> push off left / right</div>
+        <div><b>Space / Shift</b> push off up / down</div>
         <div><b>Q / E</b> roll</div>
         <div><b>Left click</b> use</div>
         <div><b>Right click</b> grab / place / let go</div>
         <div><b>R</b> read the paper you are holding</div>
-        <div><b>T</b> clip tether (spacewalk) &nbsp; <b>Space</b> reel in tether</div>
+        <div><b>T</b> clip tether (spacewalk) &nbsp; <b>F</b> (hold) reel in tether</div>
       </div>
       <p class="go">Click to continue</p>`;
     this.pause.addEventListener('click', () => G.input.lock());

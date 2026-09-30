@@ -15,9 +15,11 @@ npm run build    # static build into dist/
 | Mouse | look |
 | W | push off: every push adds one unit of speed, no limit. Holding pushes steadily; tapping pushes again sooner |
 | S | grab: each cycle takes off one unit of speed; once stopped, keep holding to push backwards |
+| A / D | push off left / right |
+| Space / Shift | push off up / down (relative to your view) |
 | Q / E | roll |
 | Left click | use |
 | Right click | grab / place / let go |
 | R | read the paper you are holding |
 | T | clip tether to an anchor (spacewalk) |
-| Space | reel in tether |
+| F (hold) | reel in tether |

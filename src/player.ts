@@ -11,13 +11,25 @@ const HOLD_PAUSE = 0.55;
 const TAP_PAUSE = 0.12;
 const REACH = 2.1;
 
-type CycleKind = 'fwd' | 'back';
+type CycleKind = 'fwd' | 'back' | 'left' | 'right' | 'up' | 'down';
+
+/** Keys that start push-off cycles. S is special: it grabs/slows first and only pushes backwards once stopped. */
+const PUSH_KEYS: [string, CycleKind][] = [
+  ['KeyW', 'fwd'],
+  ['KeyS', 'back'],
+  ['KeyA', 'left'],
+  ['KeyD', 'right'],
+  ['Space', 'up'],
+  ['ShiftLeft', 'down'],
+  ['ShiftRight', 'down'],
+];
 
 interface Cycle {
   kind: CycleKind;
   t: number;
-  from: THREE.Vector3;
-  to: THREE.Vector3;
+  /** Total velocity change this cycle applies, spread over the push. */
+  delta: THREE.Vector3;
+  eased: number;
 }
 
 export class Player {
@@ -62,9 +74,13 @@ export class Player {
       this.idle = 0;
       return;
     }
-    if (kind === 'fwd') {
-      // every push adds one unit of speed along the view direction; there is no cap
-      to = this.vel.clone().addScaledVector(f, SPEED_UNIT);
+    const dirs: Partial<Record<CycleKind, THREE.Vector3>> = {
+      fwd: f, left: this.right.negate(), right: this.right, up: this.up, down: this.up.negate(),
+    };
+    const pushDir = dirs[kind];
+    if (pushDir) {
+      // every push adds one unit of speed in that direction; there is no cap
+      to = this.vel.clone().addScaledVector(pushDir, SPEED_UNIT);
       this.stopped = false;
     } else if (this.vel.length() > 0.02 && !(held && this.stopped && fs < 0)) {
       // grab and slow down by up to one unit per cycle
@@ -76,7 +92,7 @@ export class Player {
       to = this.vel.clone().addScaledVector(f, -SPEED_UNIT);
       this.stopped = true;
     }
-    this.cycle = { kind, t: 0, from: this.vel.clone(), to };
+    this.cycle = { kind, t: 0, delta: to.sub(this.vel), eased: 0 };
     this.lastKind = kind;
     G.audio?.push();
   }
@@ -95,16 +111,19 @@ export class Player {
     this.quat.multiply(q).normalize();
 
     // --- push-off cycles ---
-    const wDown = inp.isDown('KeyW'), sDown = inp.isDown('KeyS');
-    if (inp.wasPressed('KeyW')) this.queued = 'fwd';
-    if (inp.wasPressed('KeyS')) this.queued = 'back';
+    let heldKind: CycleKind | null = null;
+    for (const [key, kind] of PUSH_KEYS) {
+      if (inp.wasPressed(key)) this.queued = kind;
+      if (inp.isDown(key) && (!heldKind || kind === this.lastKind)) heldKind = kind;
+    }
     if (this.cycle) {
       const c = this.cycle;
       c.t += dt;
       const k = Math.min(1, c.t / PUSH_T);
       const e = k * k * (3 - 2 * k);
-      // follow the planned velocity profile, while keeping any externally applied changes
-      this.vel.copy(c.from).lerp(c.to, e);
+      // apply this frame's share of the push, keeping any other forces (tether, collisions)
+      this.vel.addScaledVector(c.delta, e - c.eased);
+      c.eased = e;
       if (k >= 1) {
         this.cycle = null;
         this.idle = 0;
@@ -115,12 +134,11 @@ export class Player {
         const kind = this.queued;
         this.queued = null;
         this.startCycle(kind, false);
-      } else if (this.idle >= HOLD_PAUSE && (wDown || sDown)) {
-        const kind: CycleKind = wDown ? 'fwd' : 'back';
-        this.startCycle(kind, kind === this.lastKind);
+      } else if (this.idle >= HOLD_PAUSE && heldKind) {
+        this.startCycle(heldKind, heldKind === this.lastKind);
       }
     }
-    if (!sDown && !wDown && !this.cycle) this.stopped = this.vel.length() < 0.05;
+    if (!heldKind && !this.cycle) this.stopped = this.vel.length() < 0.05;
 
     // --- integrate ---
     this.pos.addScaledVector(this.vel, dt);
