@@ -59,8 +59,9 @@ export class Construction {
     const n = [...G.station.modules.values()].filter((x) => x.type === type).length + 1;
     const faces: Partial<Record<Dir, FaceKind>> = {};
     if (type === 'cupola') {
-      // windows on every side except the berthing side
-      for (const f of ALL_DIRS) if (f !== opposite(d)) faces[f] = 'window';
+      // a big window at the far end and one looking down at the Earth; the other walls take racks
+      faces[d] = 'window';
+      if (opposite(d) !== 3) faces[3] = 'window';
     }
     G.items.takeFromHands();
     G.items.remove(item);

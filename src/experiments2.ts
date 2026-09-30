@@ -174,6 +174,7 @@ export class EarthCamRack extends Experiment {
   color = 0xc9cfc0;
   runsNeeded = 3;
   points = 5;
+  needsPower = false;
   focus = 0;
   advanced = true;
   frames: Target[] = [];
