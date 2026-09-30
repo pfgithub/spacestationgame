@@ -129,8 +129,40 @@ function fbm(x: number, y: number, s: number, wrap: number, oct = 6) {
   return sum;
 }
 
+const EW = 1024, EH = 512, EF = 8;
+
+export type Terrain = 'ocean' | 'coast' | 'desert' | 'forest' | 'ice';
+
+/** Terrain at a texel of the Earth texture (x in 0..EW, y in 0..EH). */
+export function terrainAt(x: number, y: number): { t: Terrain; rgb: [number, number, number] } {
+  const lat = Math.abs(y / EH - 0.5) * 2;
+  const nx = (x / EW) * EF, ny = (y / EH) * EF * 0.5;
+  const e = fbm(nx, ny, 1, EF) - 0.08 * lat;
+  if (lat > 0.88) return { t: 'ice', rgb: [235, 240, 245] };
+  if (e < 0.5) {
+    const depth = (0.5 - e) * 2;
+    return { t: 'ocean', rgb: [10 + 20 * (1 - depth), 40 + 60 * (1 - depth), 90 + 80 * (1 - depth)] };
+  }
+  if (e < 0.52) return { t: 'coast', rgb: [190, 180, 130] };
+  const dry = fbm(nx + 50, ny, 7, EF, 4);
+  const hh = (e - 0.5) * 3;
+  let rgb: [number, number, number];
+  let t: Terrain;
+  if (dry > 0.55 && lat < 0.5) { rgb = [190 - hh * 40, 160 - hh * 40, 100 - hh * 30]; t = 'desert'; }
+  else { rgb = [50 + hh * 60, 100 + hh * 30, 40 + hh * 30]; t = 'forest'; }
+  if (lat > 0.7) { rgb = [rgb[0] * 0.5 + 110, rgb[1] * 0.5 + 110, rgb[2] * 0.5 + 110]; t = 'ice'; }
+  return { t, rgb };
+}
+
+/** Cloud cover 0..1 at a texel. */
+export function cloudAt(x: number, y: number) {
+  const nx = (x / EW) * EF, ny = (y / EH) * EF * 0.5;
+  const cl = fbm(nx * 1.3 + 13, ny * 1.3, 42, Math.round(EF * 1.3));
+  return Math.max(0, Math.min(1, (cl - 0.5) * 4));
+}
+
 export function earthTextures() {
-  const W = 1024, H = 512;
+  const W = EW, H = EH;
   const color = document.createElement('canvas');
   color.width = W; color.height = H;
   const cg = color.getContext('2d')!;
@@ -139,30 +171,12 @@ export function earthTextures() {
   clouds.width = W; clouds.height = H;
   const kg = clouds.getContext('2d')!;
   const ki = kg.createImageData(W, H);
-  const F = 8;
   for (let y = 0; y < H; y++) {
-    const lat = Math.abs(y / H - 0.5) * 2;
     for (let x = 0; x < W; x++) {
-      const nx = (x / W) * F, ny = (y / H) * F * 0.5;
-      const e = fbm(nx, ny, 1, F) - 0.08 * lat;
       const k = (y * W + x) * 4;
-      let r, g, b;
-      if (lat > 0.88) { r = 235; g = 240; b = 245; }
-      else if (e < 0.5) {
-        const depth = (0.5 - e) * 2;
-        r = 10 + 20 * (1 - depth); g = 40 + 60 * (1 - depth); b = 90 + 80 * (1 - depth);
-      } else if (e < 0.52) { r = 190; g = 180; b = 130; }
-      else {
-        const dry = fbm(nx + 50, ny, 7, F, 4);
-        const hh = (e - 0.5) * 3;
-        if (dry > 0.55 && lat < 0.5) { r = 190 - hh * 40; g = 160 - hh * 40; b = 100 - hh * 30; }
-        else { r = 50 + hh * 60; g = 100 + hh * 30; b = 40 + hh * 30; }
-        if (lat > 0.7) { r = r * 0.5 + 110; g = g * 0.5 + 110; b = b * 0.5 + 110; }
-      }
-      ci.data[k] = r; ci.data[k + 1] = g; ci.data[k + 2] = b; ci.data[k + 3] = 255;
-      const cl = fbm(nx * 1.3 + 13, ny * 1.3, 42, Math.round(F * 1.3));
-      const a = Math.max(0, Math.min(1, (cl - 0.5) * 4));
-      ki.data[k] = 255; ki.data[k + 1] = 255; ki.data[k + 2] = 255; ki.data[k + 3] = a * 255;
+      const { rgb } = terrainAt(x, y);
+      ci.data[k] = rgb[0]; ci.data[k + 1] = rgb[1]; ci.data[k + 2] = rgb[2]; ci.data[k + 3] = 255;
+      ki.data[k] = 255; ki.data[k + 1] = 255; ki.data[k + 2] = 255; ki.data[k + 3] = cloudAt(x, y) * 255;
     }
   }
   cg.putImageData(ci, 0, 0);

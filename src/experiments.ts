@@ -20,7 +20,7 @@ function chamber(parent: THREE.Object3D, x: number, y: number, w: number, h: num
 }
 
 /** Shared pieces for experiment racks: run counting, completion stamp, power dependence. */
-abstract class Experiment extends Rack {
+export abstract class Experiment extends Rack {
   needsPower = true;
   abstract runsNeeded: number;
   abstract points: number;

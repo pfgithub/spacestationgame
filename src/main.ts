@@ -16,6 +16,7 @@ import { Power } from './power';
 import { makePaper } from './docs';
 import { Science } from './science';
 import './experiments';
+import './experiments2';
 import { Cargo } from './cargo';
 import { newOrderForm } from './catalog';
 import { EVA } from './eva';

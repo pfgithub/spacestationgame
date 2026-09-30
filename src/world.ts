@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { earthTextures } from './textures';
+import { Terrain, cloudAt, earthTextures, terrainAt } from './textures';
 
 export const EARTH_R = 4000;
 export const ALTITUDE = 420;
@@ -82,6 +82,24 @@ export class World {
     starGeom.setAttribute('color', new THREE.BufferAttribute(col, 3));
     this.stars = new THREE.Points(starGeom, new THREE.PointsMaterial({ size: 1.6, sizeAttenuation: false, vertexColors: true }));
     scene.add(this.stars);
+  }
+
+  /** Is the ground directly below in daylight (not just the station)? */
+  groundLit() {
+    return this.sunDir.y > 0.15;
+  }
+
+  /** What lies directly below the station right now. */
+  nadir(): { terrain: Terrain; cloud: number } {
+    const texel = (mesh: THREE.Object3D) => {
+      const d = new THREE.Vector3(0, 1, 0).applyQuaternion(mesh.quaternion.clone().invert());
+      const u = ((Math.atan2(d.z, -d.x) / (Math.PI * 2)) % 1 + 1) % 1;
+      const v = Math.acos(Math.max(-1, Math.min(1, d.y))) / Math.PI;
+      return [u * 1024, v * 512] as const;
+    };
+    const [x, y] = texel(this.earth);
+    const [cx, cy] = texel(this.clouds);
+    return { terrain: terrainAt(x, y).t, cloud: cloudAt(cx, cy) };
   }
 
   update(time: number) {

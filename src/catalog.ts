@@ -42,7 +42,11 @@ CATALOG.push(
   {
     id: 'exp-dosimetry', name: 'Radiation dosimetry experiment', cost: 35, section: 'Experiments',
     blurb: 'Measures the radiation dose in different parts of the station. Rack and procedure included.',
-    deliver: () => [rackCrate('dosimetry'), makePaper('proc-dosimetry')],
+    deliver: () => {
+      const crate = rackCrate('dosimetry');
+      const badges = (crate.data.rack as import('./experiments2').DosimetryRack).makeBadges();
+      return [crate, makePaper('proc-dosimetry'), ...badges];
+    },
     available: () => RACK_TYPES.has('dosimetry') && !G.science.owned.has('dosimetry'),
   },
   {
