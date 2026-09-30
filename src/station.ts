@@ -118,6 +118,10 @@ export class Station {
   extraBoxes: AABB[] = [];
   /** Cells that may never hold a module. */
   reserved = new Set<string>();
+  /** Extra dynamic collision sources (racks etc). */
+  boxProviders: (() => AABB[])[] = [];
+  /** Supplies the interaction for a plain wall face (used for installing racks). */
+  wallInteract?: (m: Module, d: Dir) => import('./interact').Interactable;
   /** Called after any structural change. */
   onRebuild: (() => void)[] = [];
 
@@ -260,6 +264,8 @@ export class Station {
         const b = faceVec(d, HALF_OUT, u1, v1);
         const min = a.clone().min(b), max = a.clone().max(b);
         const mesh = boxMesh(min, max, matArr);
+        if (kind === 'wall' && this.wallInteract) setInteract(mesh, this.wallInteract(m, d));
+        mesh.userData.surface = true;
         m.group.add(mesh);
         this.staticBoxes.push(aabb(min.clone().add(C), max.clone().add(C)));
       }
@@ -351,6 +357,7 @@ export class Station {
   boxes() {
     const out = this.staticBoxes.slice();
     for (const d of this.doors.values()) if (d.t < 0.6) out.push(d.box);
+    for (const p of this.boxProviders) out.push(...p());
     return out;
   }
 

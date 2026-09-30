@@ -5,6 +5,10 @@ import type { UI } from './ui';
 import type { Input } from './input';
 import type { World } from './world';
 import type { Audio } from './audio';
+import type { Items } from './items';
+import type { Racks } from './racks';
+import type { Days } from './days';
+import type { Power } from './power';
 
 /** Global game context, filled in by main.ts. */
 export const G = {} as {
@@ -17,6 +21,10 @@ export const G = {} as {
   input: Input;
   world: World;
   audio: Audio | undefined;
+  items: Items;
+  racks: Racks;
+  days: Days;
+  power: Power;
   /** Seconds of game time elapsed. */
   time: number;
   day: number;

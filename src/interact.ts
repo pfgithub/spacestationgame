@@ -7,6 +7,9 @@ export interface Interactable {
   /** Prompt for the secondary action (right click). */
   altLabel?(): string | null;
   alt?(): void;
+  /** When the player holds an item, a target may offer to accept it (right click). */
+  acceptLabel?(item: import('./items').Item): string | null;
+  accept?(item: import('./items').Item): void;
   /** Max reach in metres (default 2.6). */
   range?: number;
 }
