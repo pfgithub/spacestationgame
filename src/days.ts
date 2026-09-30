@@ -33,7 +33,7 @@ export class Days {
       this.sleeping = false;
       G.player.frozen = false;
       G.ui.toast(`Day ${G.day}. Good morning.`, 4000);
-      for (const f of this.morning) f();
+      for (const f of this.morning.slice()) f();
     }, 1500);
   }
 }

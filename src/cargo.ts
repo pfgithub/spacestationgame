@@ -4,7 +4,7 @@ import { G } from './game';
 import { Item } from './items';
 import { Rack, registerRack } from './racks';
 import { button, lamp, text } from './controls';
-import { stationMats } from './station';
+import { doorKey, stationMats } from './station';
 import { makeLetter, makePaper, registerDoc } from './docs';
 import { CATALOG, newOrderForm, orderTotal } from './catalog';
 import { solarTexture, labelMesh } from './textures';
@@ -12,7 +12,19 @@ import { solarTexture, labelMesh } from './textures';
 export const SHIP_CELL: Cell = [0, 0, -2];
 export const DOCK_CELL: Cell = [0, 0, -1];
 const DOCKED_Z = SHIP_CELL[2] * 4;
-const HOLD_RANGE = 35;
+const HOLD_RANGE = 25;
+/** Capture tolerances: how far off-centre, and how fast, the vehicle may arrive and still latch on. */
+const CAPTURE_OFFSET = 0.8;
+const CAPTURE_SPEED = 1.2;
+
+/** Wraps a morning callback so it runs only the next morning. */
+function once(f: () => void) {
+  const g = () => {
+    f();
+    G.days.morning.splice(G.days.morning.indexOf(g), 1);
+  };
+  return g;
+}
 
 export class Cargo {
   state: 'docked' | 'waiting' | 'away' = 'away';
@@ -144,7 +156,35 @@ export class Cargo {
     G.audio?.clunk();
   }
 
-  /** Undocks (at night). Returns everything that was left inside. */
+  /** Why the vehicle can't be released right now, or null. */
+  whyNotRelease(): string | null {
+    if (this.state !== 'docked') return 'no vehicle';
+    const door = G.station.doors.get(doorKey(DOCK_CELL, 5));
+    if (door && (door.open || door.t > 0)) return 'hatch';
+    if (G.station.moduleAt(G.player.pos) === this.shipModule) return 'inside';
+    return null;
+  }
+
+  /** Sends the docked vehicle home now, with everything inside it. The next one comes overnight. */
+  release() {
+    const sent = this.undock();
+    const letters = this.processMail(sent);
+    for (const it of letters) G.items.stow(it);
+    this.manifest = letters;
+    // watch it drift away
+    this.pos.set(0, 0, DOCKED_Z);
+    this.vel.set(0, 0, -0.3);
+    this.departT = 30;
+    this.mesh.visible = true;
+    this.cube.visible = true;
+    this.front.visible = true;
+    G.audio?.clunk();
+    G.ui.toast('The vehicle backs away from the port, bound for the ground.', 4000);
+  }
+
+  departT = 0;
+
+  /** Undocks. Returns everything that was left inside. */
   undock(): Item[] {
     const st = G.station;
     const ship = this.shipModule;
@@ -169,15 +209,15 @@ export class Cargo {
     return sent;
   }
 
-  /** Runs during the night: the docked vehicle leaves with the mail, and the next one arrives. */
+  /**
+   * Runs during the night. A vehicle that was released arrives back loaded with the reply; one that is still
+   * docked (or still waiting to be docked) just stays, and nothing is exchanged.
+   */
   night() {
-    if (this.state === 'waiting') {
-      // the vehicle keeps waiting; nothing is exchanged
-      return;
-    }
-    const sent = this.state === 'docked' ? this.undock() : [];
-    const letters = this.processMail(sent);
-    this.arrive(letters);
+    if (this.state === 'docked') G.days.morning.push(once(() => G.ui.toast('No new vehicle came up: the last one was never released.', 5000)));
+    if (this.state !== 'away') return;
+    this.departT = 0;
+    this.arrive(this.manifest.length ? this.manifest : this.processMail([]));
   }
 
   processMail(sent: Item[]): Item[] {
@@ -258,22 +298,21 @@ export class Cargo {
 
   updateDocking(dt: number) {
     const inp = G.input;
-    const a = 0.12 * dt;
-    if (inp.isDown('KeyW')) this.vel.z += a;
-    if (inp.isDown('KeyS')) this.vel.z -= a;
-    if (inp.isDown('KeyA')) this.vel.x -= a;
-    if (inp.isDown('KeyD')) this.vel.x += a;
-    if (inp.isDown('Space')) this.vel.y += a;
-    if (inp.isDown('ShiftLeft') || inp.isDown('ShiftRight')) this.vel.y -= a;
     if (inp.wasPressed('Tab')) {
       this.leaveDocking();
       return;
     }
+    // thrusters push the vehicle around; it keeps drifting until you push it the other way
+    const axis = (neg: boolean, pos: boolean) => (pos ? 1 : 0) - (neg ? 1 : 0);
+    const a = 1.2 * dt;
+    this.vel.x += axis(inp.isDown('KeyA'), inp.isDown('KeyD')) * a;
+    this.vel.y += axis(inp.isDown('ShiftLeft') || inp.isDown('ShiftRight'), inp.isDown('Space')) * a;
+    this.vel.z = THREE.MathUtils.clamp(this.vel.z + axis(inp.isDown('KeyS'), inp.isDown('KeyW')) * a, -3, 3);
     this.pos.addScaledVector(this.vel, dt);
     const range = DOCKED_Z - this.pos.z;
     if (range <= 0) {
       const lateral = Math.hypot(this.pos.x, this.pos.y);
-      if (lateral < 0.3 && this.vel.z < 0.4) {
+      if (lateral < CAPTURE_OFFSET && this.vel.z < CAPTURE_SPEED) {
         this.leaveDocking();
         G.ui.fade(() => {
           this.dock();
@@ -282,14 +321,11 @@ export class Cargo {
         return;
       }
       G.audio?.bump(3);
-      G.ui.toast(lateral >= 0.3 ? 'Misaligned: the vehicle glanced off the docking ring' : 'Too fast: the vehicle bounced off the docking ring', 3500);
+      G.ui.toast(lateral >= CAPTURE_OFFSET ? 'Misaligned: the vehicle glanced off the docking ring' : 'Too fast: the vehicle bounced off the docking ring', 3500);
       this.pos.z = DOCKED_Z - 0.05;
       this.vel.z = -Math.abs(this.vel.z) * 0.4 - 0.05;
-      this.vel.x += (Math.random() - 0.5) * 0.1;
     }
-    if (range > 80) {
-      this.vel.z = Math.max(this.vel.z, 0);
-    }
+    if (range > 60) this.vel.z = Math.max(this.vel.z, 0);
     this.mesh.position.copy(this.pos);
     // periscope camera looks out of the docking port
     const cam = G.camera;
@@ -304,7 +340,14 @@ export class Cargo {
       this.mesh.position.copy(this.pos);
       this.mesh.position.y += Math.sin(G.time * 0.3) * 0.05;
     }
-    void dt;
+    if (this.state === 'away' && this.departT > 0) {
+      // a released vehicle backs off and then burns for home
+      this.departT -= dt;
+      this.vel.z -= dt * (this.departT < 22 ? 1.5 : 0.05);
+      this.pos.addScaledVector(this.vel, dt);
+      this.mesh.position.copy(this.pos);
+      if (this.departT <= 0) this.mesh.visible = false;
+    }
   }
 }
 
@@ -319,29 +362,44 @@ export class DockingPanel extends Rack {
   movable = false;
   waiting!: ReturnType<typeof lamp>;
   captured!: ReturnType<typeof lamp>;
+  sealed!: ReturnType<typeof lamp>;
 
   build() {
     const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 0.3, 20), new THREE.MeshStandardMaterial({ color: 0x2a2d31, metalness: 0.5 }));
     scope.rotation.x = Math.PI / 2;
-    scope.position.set(0, 0.3, 0.15);
+    scope.position.set(-0.45, 0.35, 0.15);
     const lens = new THREE.Mesh(new THREE.CircleGeometry(0.15, 20), new THREE.MeshStandardMaterial({ color: 0x113355, metalness: 0.9, roughness: 0.1 }));
-    lens.position.set(0, 0.3, 0.301);
+    lens.position.set(-0.45, 0.35, 0.301);
     this.group.add(scope, lens);
-    text(this.group, 'PERISCOPE', 0, 0.02, 0.4, 0.06);
-    this.waiting = lamp(this.group, -0.4, -0.3, 0xffaa22, 'VEHICLE HOLDING');
-    this.captured = lamp(this.group, 0.4, -0.3, 0x33ff66, 'CAPTURED');
-    button(this.group, 0, -0.55, 'MANUAL CONTROL', 0xcc3322, () => {
+    text(this.group, 'PERISCOPE', -0.45, 0.07, 0.4, 0.06);
+    this.waiting = lamp(this.group, 0.2, 0.45, 0xffaa22, 'VEHICLE HOLDING');
+    this.captured = lamp(this.group, 0.65, 0.45, 0x33ff66, 'DOCKED');
+    this.sealed = lamp(this.group, 0.42, 0.15, 0x3399ff, 'HATCH SEALED');
+    button(this.group, -0.45, -0.35, 'MANUAL CONTROL', 0xcc3322, () => {
       if (G.cargo.state !== 'waiting') {
         G.audio?.beep(220, 0.2);
         return;
       }
       G.cargo.enterDocking();
     }, () => 'Take manual control');
+    button(this.group, 0.45, -0.35, 'RELEASE', 0x2255cc, () => {
+      const why = G.cargo.whyNotRelease();
+      if (why) {
+        G.audio?.beep(220, 0.3);
+        if (why === 'inside') G.ui.toast('Not with you still aboard it!');
+        return;
+      }
+      G.cargo.release();
+    }, () => 'Release the vehicle (send it home)');
+    text(this.group, 'RELEASE SENDS THE VEHICLE AND', 0.45, -0.55, 0.9, 0.05, '#8a1a10');
+    text(this.group, 'EVERYTHING IN IT TO THE GROUND', 0.45, -0.61, 0.9, 0.05, '#8a1a10');
   }
 
   update() {
     this.waiting.set(G.cargo.state === 'waiting');
     this.captured.set(G.cargo.state === 'docked');
+    const door = G.station.doors.get(doorKey(DOCK_CELL, 5));
+    this.sealed.set(G.cargo.state === 'docked' && !!door && !door.open && door.t === 0);
   }
 }
 registerRack('dockpanel', () => new DockingPanel());
@@ -354,22 +412,23 @@ registerDoc('proc-docking', {
 <div class="meta">Cargo vehicle, telemanual mode</div>
 <p>Cargo vehicles fly themselves to a hold point about ${HOLD_RANGE} metres in front of the docking port and
 wait there. The last stretch is flown by you, from the DOCKING CONTROL panel.</p>
+<h2>Docking</h2>
 <ol>
-<li>Check the amber <b>VEHICLE HOLDING</b> lamp is lit.</li>
-<li>Press <b>MANUAL CONTROL</b>. The periscope shows the view straight out of the docking port.</li>
-<li>First line up. Use A/D and Space/Shift to drift the vehicle until the <b>docking target</b> (the black disc
-with a white cross) sits in the centre of the periscope reticle, and the small cross on its post lines up
-with the large one behind it.</li>
-<li>Then close in with W. The vehicle keeps drifting until you counter it: every nudge must be undone
-with an opposite nudge (S to slow down).</li>
-<li>Arrive <b>slowly</b>: less than <b>0.4 m/s</b> at contact, and centred. Too fast or off-centre and the vehicle
-will bounce off the ring. No harm done &mdash; try again.</li>
+<li>Check the amber <b>VEHICLE HOLDING</b> lamp is lit, and press <b>MANUAL CONTROL</b>. The periscope shows the
+view straight out of the docking port.</li>
+<li>Steer the <b>docking target</b> (the black disc with the white cross) into the middle of the reticle with
+A/D and Space/Shift. The thrusters are strong, but the vehicle keeps drifting until you push it back the other way.</li>
+<li>Close in with W; S slows the approach.</li>
+<li>The docking ring is forgiving: anywhere near the centre, slower than about <b>1 m/s</b>, and it will latch on.
+Too fast or too far off and the vehicle bounces off. No harm done &mdash; try again.</li>
 <li>After capture, open the hatch at the far end of the DOCKING module.</li>
 </ol>
 <p>You may leave the controls at any time (TAB); the vehicle will hold its position.</p>
-<h2>Departure</h2>
-<p>The vehicle leaves by itself during the night, taking everything inside it to the ground.
-The next vehicle arrives in the morning.</p>`,
+<h2>Sending the vehicle home</h2>
+<p>Load the vehicle with everything you want to send down: report slips, film, samples, order forms, rubbish.
+Close the hatch (the blue <b>HATCH SEALED</b> lamp lights) and press <b>RELEASE</b>. The vehicle leaves at once.</p>
+<p>The ground only sends a new vehicle once the old one has come home. <b>If you go to sleep without releasing it, it
+stays docked and nothing comes up overnight.</b></p>`,
 });
 
 export { makePaper };

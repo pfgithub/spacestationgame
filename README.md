@@ -44,10 +44,11 @@ travels on paper.
 - **Science.** The station starts with one experiment, the crystal furnace. Experiments don't explain themselves;
   each comes with a written procedure. Advancing one prints a result slip, ejects a film canister or produces a sample,
   worth science points once it reaches the ground. Finished experiments can be repeated at half the points.
-- **Mail.** A cargo vehicle is docked when you arrive. Anything you leave inside it goes to the ground when it
-  leaves during the night: slips and film are credited as points, and the order form is filled against your
-  balance. The next morning a new vehicle waits 35 m out with a statement, a fresh order form and whatever you
-  ordered, until you fly it in from the DOCKING CONTROL periscope.
+- **Mail.** A cargo vehicle is docked when you arrive. Anything you leave inside it goes to the ground when you
+  close its hatch and press RELEASE on the DOCKING CONTROL panel: slips, film and samples are credited as points, and
+  the order form is filled against your balance. Overnight a new vehicle comes up and waits 25 m out with a statement,
+  a fresh order form and whatever you ordered, until you fly it in from the periscope. If you sleep without releasing
+  the old vehicle, no new one comes.
 - **Things to buy.** Corridor and cupola modules, spare parts, decorations, and eleven more experiments:
   a free student droplet kit, an exercise bike, plant growth, fluid physics, air microbiology (carry a sampler
   between modules), yeast fermentation (incubate, freeze, and get it to the cargo vehicle before it thaws),

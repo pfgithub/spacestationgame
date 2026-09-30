@@ -125,9 +125,10 @@ Here is how things work.</p>
 send samples home. When you finish an experiment's series you may keep repeating it for half the points, and
 there is always one free experiment on offer, so you will never run out of work.</p>
 <h2>Mail and supplies</h2>
-<p>A cargo vehicle visits every night while you sleep. Anything you leave inside the docked vehicle comes
-home with it &mdash; that is how your reports and order forms reach us. The next vehicle brings whatever you
-ordered, paid for with your science points, along with our letters.</p>
+<p>A cargo vehicle is docked at the station. Anything you put inside it comes home with it &mdash; that is how your
+reports and order forms reach us. When it is loaded, close its hatch and press <b>RELEASE</b> on the DOCKING CONTROL
+panel. Overnight we fill your order and send up a new vehicle with it, along with our letters. Until you release a
+vehicle, we can't send another.</p>
 <p>New vehicles wait near the station until you dock them from the DOCKING module.</p>
 <h2>Housekeeping</h2>
 <p>Things break. When something seems wrong, the <b>Station Operations Manual</b> lists symptoms and cures.
