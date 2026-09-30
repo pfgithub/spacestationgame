@@ -20,7 +20,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .pause h1 { font-size: 64px; letter-spacing: 18px; margin: 0; font-weight: normal; }
 .pause .sub { opacity: 0.7; margin-top: 4px; }
 .pause .keys { margin: 24px 0; line-height: 1.8; font-size: 15px; }
-.pause .keys b { display: inline-block; min-width: 110px; color: #ffd36b; font-weight: normal; }
+.pause .keys b { display: inline-block; min-width: 140px; color: #ffd36b; font-weight: normal; }
 .pause .go { animation: blink 1.4s infinite; }
 @keyframes blink { 50% { opacity: 0.35; } }
 
@@ -58,3 +58,5 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .pause .saved { font-size: 13px; opacity: 0.55; margin: 18px 0 6px; }
 .pause .fresh { font-family: inherit; font-size: 13px; background: none; color: #dfe8f2; border: 1px solid rgba(223,232,242,0.4); padding: 4px 12px; cursor: pointer; opacity: 0.7; }
 .pause .fresh:hover { opacity: 1; }
+.hints { position: absolute; right: 14px; bottom: 12px; font-size: 12px; line-height: 1.55; opacity: 0.7; text-align: right; }
+.hints b { display: inline-block; margin-right: 8px; padding: 0 5px; border: 1px solid rgba(255,255,255,0.5); border-radius: 3px; font-weight: normal; font-size: 11px; }

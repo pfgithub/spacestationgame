@@ -19,7 +19,7 @@ interface SaveData {
   player: { pos: V3; quat: Q4; vel: V3 };
   modules: { cell: Cell; type: ModuleType; name: string; faces: FaceKind[]; pressure: number }[];
   doors: { cell: Cell; dir: Dir; kind: FaceKind; open: boolean }[];
-  racks: { type: string; mount: { cell: Cell; dir: Dir } | null; data: Record<string, any> }[];
+  racks: { type: string; mount: { cell: Cell; dir: Dir; rot?: number } | null; data: Record<string, any> }[];
   items: { id: number; kind: Item['kind']; name: string; pos: V3; quat: Q4; vel: V3; spin: V3; state: Item['state']; data: Record<string, any> }[];
   science: { balance: number; totalEarned: number; progress: Record<string, number>; completed: string[] };
   cargo: { state: 'docked' | 'waiting' | 'away'; pos: V3; vehicleNo: number; manifest: number[]; outgoing: number[] };
@@ -157,7 +157,7 @@ export function restoreGame(d: SaveData) {
   setNextItemId(maxId + 1);
   d.racks.forEach((r, i) => {
     racks[i].deserialize(resolveRef(r.data, racks, items) as Record<string, any>);
-    if (r.mount) G.racks.mountRack(racks[i], r.mount.cell, r.mount.dir);
+    if (r.mount) G.racks.mountRack(racks[i], r.mount.cell, r.mount.dir, r.mount.rot ?? 0);
   });
 
   Object.assign(G.science, { balance: d.science.balance, totalEarned: d.science.totalEarned, progress: d.science.progress, completed: new Set(d.science.completed) });

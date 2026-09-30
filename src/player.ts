@@ -8,12 +8,10 @@ const PUSH_T = 0.4;
 /** Pause before pushing again while a key is held. A fresh key press never waits. */
 const HOLD_PAUSE = 0.35;
 const REACH = 2.1;
-/** Pitch at which looking further up/down starts tipping the whole reference frame over. */
-const PITCH_LIMIT = THREE.MathUtils.degToRad(75);
 /** A push stops you instead if it points more than 120 degrees away from the way you're moving. */
 const STOP_DOT = -0.5;
-const X = new THREE.Vector3(1, 0, 0);
-const Y = new THREE.Vector3(0, 1, 0);
+/** With nothing in reach, a push within ~60 degrees of the tether hauls you along it instead. */
+const TETHER_DOT = 0.5;
 
 /** Push keys and the view-relative direction each pushes you in. */
 const PUSH_KEYS: [string, [number, number, number]][] = [
@@ -37,16 +35,8 @@ interface Push {
 export class Player {
   pos = new THREE.Vector3();
   vel = new THREE.Vector3();
-  /** View orientation. Derived from base/yaw/pitch; setting it from outside re-bases the look. */
+  /** View orientation. Mouse look turns relative to the current view: there is no up or down. */
   quat = new THREE.Quaternion();
-  /**
-   * Mouse look works like a normal FPS (yaw then pitch) relative to a base orientation, so circling the mouse never
-   * rolls you. Looking beyond the pitch limit rotates the base instead, which lets you loop right over.
-   */
-  base = new THREE.Quaternion();
-  yaw = 0;
-  pitch = 0;
-  private lastQuat = new THREE.Quaternion();
   radius = 0.3;
   rollVel = 0;
   push: Push | null = null;
@@ -78,13 +68,19 @@ export class Player {
    * Starting a push abandons any push still in progress (keeping the speed it has already given).
    */
   private startPush(key: string, local: [number, number, number]) {
+    let dir = new THREE.Vector3(...local).applyQuaternion(this.quat);
     if (!this.canPush()) {
-      G.ui.toast('Nothing within reach to push off');
-      this.push = null;
-      this.idle = 0;
-      return;
+      // nothing to push off: if the push is roughly towards the tether, haul yourself along it instead
+      const along = G.eva.towardAnchor();
+      if (along && along.dot(dir) > TETHER_DOT) {
+        dir = along;
+      } else {
+        G.ui.toast(along ? 'Nothing within reach. Push towards your tether to pull yourself in.' : 'Nothing within reach to push off');
+        this.push = null;
+        this.idle = 0;
+        return;
+      }
     }
-    const dir = new THREE.Vector3(...local).applyQuaternion(this.quat);
     const along = this.vel.dot(dir);
     const speed = this.vel.length();
     let target: THREE.Vector3;
@@ -102,33 +98,14 @@ export class Player {
     const inp = G.input;
     if (this.frozen) return;
     // --- look ---
-    if (!this.quat.equals(this.lastQuat)) {
-      // someone else set our orientation (loading, scripts): look straight ahead from there
-      this.base.copy(this.quat);
-      this.yaw = this.pitch = 0;
-    }
-    this.yaw -= inp.mouseDX * this.mouseSens;
-    this.pitch -= inp.mouseDY * this.mouseSens;
-    const excess = this.pitch > PITCH_LIMIT ? this.pitch - PITCH_LIMIT : this.pitch < -PITCH_LIMIT ? this.pitch + PITCH_LIMIT : 0;
-    if (excess) {
-      // tip the reference frame over about the current horizontal axis instead of pitching further
-      const yawQ = new THREE.Quaternion().setFromAxisAngle(Y, this.yaw);
-      const tip = new THREE.Quaternion().setFromAxisAngle(X, excess);
-      this.base.multiply(yawQ).multiply(tip).multiply(yawQ.invert()).normalize();
-      this.pitch -= excess;
-    }
+    const yaw = -inp.mouseDX * this.mouseSens;
+    const pitch = -inp.mouseDY * this.mouseSens;
     let rollTarget = 0;
-    if (inp.isDown('KeyQ')) rollTarget += 1.6;
-    if (inp.isDown('KeyE')) rollTarget -= 1.6;
+    if (inp.isDown('KeyQ')) rollTarget -= 1.6;
+    if (inp.isDown('KeyE')) rollTarget += 1.6;
     this.rollVel += (rollTarget - this.rollVel) * Math.min(1, dt * 6);
-    if (Math.abs(this.rollVel) > 1e-4) {
-      // roll about the line of sight
-      this.base.premultiply(new THREE.Quaternion().setFromAxisAngle(this.forward, this.rollVel * dt)).normalize();
-    }
-    this.quat.copy(this.base)
-      .multiply(new THREE.Quaternion().setFromAxisAngle(Y, this.yaw))
-      .multiply(new THREE.Quaternion().setFromAxisAngle(X, this.pitch));
-    this.lastQuat.copy(this.quat);
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, this.rollVel * dt, 'YXZ'));
+    this.quat.multiply(q).normalize();
 
     // --- pushing ---
     if (this.blockedKey && !inp.isDown(this.blockedKey)) this.blockedKey = null;

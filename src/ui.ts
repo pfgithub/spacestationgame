@@ -16,6 +16,7 @@ export class UI {
   pause: HTMLElement;
   fadeEl: HTMLElement;
   vignette: HTMLElement;
+  hints: HTMLElement;
   overlayOpen = false;
   private onClose: (() => void) | null = null;
 
@@ -26,6 +27,7 @@ export class UI {
     this.toasts = el('div', 'toasts', this.root);
     this.status = el('div', 'status', this.root);
     this.vignette = el('div', 'vignette', this.root);
+    this.hints = el('div', 'hints', this.root);
     this.fadeEl = el('div', 'fade', parent);
     this.overlay = el('div', 'overlay hidden', parent);
     this.pause = el('div', 'pause', parent);
@@ -41,7 +43,7 @@ export class UI {
         <div><b>Left click</b> use</div>
         <div><b>Right click</b> grab / place / let go</div>
         <div><b>R</b> read the paper you are holding</div>
-        <div><b>T</b> clip tether (spacewalk) &nbsp; <b>F</b> (hold) reel in tether</div>
+        <div><b>Spacewalk</b> click a yellow ring to clip your tether; push towards it to haul yourself in</div>
       </div>
       <p class="go">Click to continue</p>
       <p class="saved">The game saves itself every morning.</p>
@@ -79,6 +81,21 @@ export class UI {
     t.textContent = msg;
     setTimeout(() => t.classList.add('out'), ms);
     setTimeout(() => t.remove(), ms + 600);
+  }
+
+  /** Keyboard hints in the corner; extra rows depend on what you're doing. */
+  setHints(extra: [string, string][]) {
+    const rows: [string, string][] = [
+      ['W A S D', 'push off'],
+      ['Space / Shift', 'push up / down'],
+      ['Q / E', 'roll'],
+      ['LMB', 'use'],
+      ['RMB', 'take / place / let go'],
+      ...extra,
+      ['Esc', 'pause'],
+    ];
+    const html = rows.map(([k, v]) => `<div><b>${k}</b>${v}</div>`).join('');
+    if (this.hints.innerHTML !== html) this.hints.innerHTML = html;
   }
 
   setStatus(html: string) {

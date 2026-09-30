@@ -188,8 +188,12 @@ export class Items {
     const p = G.player;
     if (hit && hit.face && hit.distance < 2.6) {
       const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).normalize();
-      item.quat.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
-      // keep the item upright-ish relative to the player
+      // face out of the surface, with its top towards the player's up
+      let up = p.up.addScaledVector(n, -p.up.dot(n));
+      if (up.lengthSq() < 1e-4) up = p.forward.addScaledVector(n, -p.forward.dot(n));
+      up.normalize();
+      const x = new THREE.Vector3().crossVectors(up, n);
+      item.quat.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, up, n));
       this.place(item, hit.point.clone().addScaledVector(n, item.data.stickOffset ?? 0.03), new THREE.Vector3(), 'stuck');
       G.audio?.click();
     } else {

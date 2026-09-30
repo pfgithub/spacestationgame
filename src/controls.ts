@@ -198,3 +198,53 @@ export function slot(parent: THREE.Object3D, x: number, y: number, w: number, h:
   });
   return g;
 }
+
+// segments: a b c d e f g (top, top-right, bottom-right, bottom, bottom-left, top-left, middle)
+const SEGMENTS: Record<string, string> = {
+  '0': 'abcdef', '1': 'bc', '2': 'abdeg', '3': 'abcdg', '4': 'bcfg', '5': 'acdfg', '6': 'acdefg', '7': 'abc',
+  '8': 'abcdefg', '9': 'abcdfg', E: 'adefg', P: 'abefg', d: 'bcdeg', '-': 'g', ' ': '', r: 'eg', L: 'def', A: 'abcefg', F: 'aefg',
+};
+
+/** A red 7-segment LED display: the station's idea of a screen. */
+export function sevenSeg(parent: THREE.Object3D, x: number, y: number, digits: number, height = 0.12) {
+  const DW = 40, DH = 64, PAD = 8;
+  const c = document.createElement('canvas');
+  c.width = digits * DW + PAD * 2;
+  c.height = DH + PAD * 2;
+  const g = c.getContext('2d')!;
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const w = height * c.width / c.height;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, height), new THREE.MeshBasicMaterial({ map: tex }));
+  m.position.set(x, y, 0.052);
+  m.userData.solid = false;
+  parent.add(m);
+  const seg = (ox: number, s: string, on: boolean) => {
+    g.fillStyle = on ? '#ff3a1a' : '#3a0d08';
+    const t = 6, L = DW - 14, H = (DH - 6) / 2;
+    const x0 = ox + 7, y0 = PAD + 3;
+    const rects: Record<string, [number, number, number, number]> = {
+      a: [x0, y0 - t / 2, L, t], g: [x0, y0 + H - t / 2, L, t], d: [x0, y0 + 2 * H - t / 2, L, t],
+      f: [x0 - t, y0, t, H], b: [x0 + L, y0, t, H], e: [x0 - t, y0 + H, t, H], c: [x0 + L, y0 + H, t, H],
+    };
+    const [rx, ry, rw, rh] = rects[s];
+    g.fillRect(rx + 1, ry + 1, rw - 2, rh - 2);
+  };
+  let shown = '';
+  const api = {
+    set(text: string) {
+      text = text.padStart(digits, ' ').slice(-digits);
+      if (text === shown) return;
+      shown = text;
+      g.fillStyle = '#120404';
+      g.fillRect(0, 0, c.width, c.height);
+      for (let i = 0; i < digits; i++) {
+        const lit = SEGMENTS[text[i]] ?? '';
+        for (const s of 'abcdefg') seg(PAD + i * DW, s, lit.includes(s));
+      }
+      tex.needsUpdate = true;
+    },
+  };
+  api.set('');
+  return api;
+}

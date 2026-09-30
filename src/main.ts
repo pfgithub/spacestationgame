@@ -200,7 +200,6 @@ function updateInteraction() {
   }
   G.ui.setPrompt(primary, secondary);
   if (focused && G.input.clicked(0) && primary) focused.use?.();
-  if (focused?.anchor && G.input.wasPressed('KeyT') && primary) focused.use?.();
   if (G.input.clicked(2) && secondary) secondaryAction?.();
   if (G.input.wasPressed('KeyR') && held && !G.items.readHeld()) G.ui.toast(`Nothing to read on the ${held.name}`);
 }
@@ -232,6 +231,10 @@ function frame(now: number) {
   G.world.update(G.time);
   const mod = G.station.moduleAt(G.player.pos);
   const held = G.items.held ? `<br>Holding: ${G.items.held.name}` : '';
+  const extra: [string, string][] = [];
+  if (G.items.held?.kind === 'paper') extra.push(['R', `read ${G.items.held.name}`]);
+  if (G.eva.tether && !G.player.canPush()) extra.push(['push towards tether', 'haul yourself in']);
+  G.ui.setHints(extra);
   G.ui.setStatus(`Day ${G.day}<br>${mod ? mod.name : 'OUTSIDE'}${held}${G.eva.status()}`);
   G.ui.update();
   renderer.render(scene, camera);

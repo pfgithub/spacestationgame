@@ -20,8 +20,6 @@ npm run build    # static build into dist/
 | Left click | use |
 | Right click | grab / place / let go |
 | R | read the paper you are holding |
-| T or left click | clip tether to the yellow ring you are looking at (spacewalk) |
-| F (hold) | reel in tether |
 
 ### Pushing off
 
@@ -31,8 +29,12 @@ pushing forwards while drifting sideways straightens you out. Pushing roughly ag
 and start a new one straight away, so well-timed repeated presses are the fastest way to build speed. There is no
 top speed, only walls.
 
-Mouse look behaves like an ordinary first-person game (circling the mouse never rolls you), except that looking
-further up or down than 75° tips your whole frame of reference over, so you can loop right round. Q and E roll.
+Mouse look turns you relative to where you are looking: there is no up or down. Q and E roll.
+
+Outside, click a yellow ring to clip your tether to it. With nothing in reach to push off, pushing roughly towards
+where the tether is clipped hauls you in along it.
+
+Racks and anything you stick to a wall are installed the way up you are facing, so you can mount things upside down.
 
 ## How it plays
 

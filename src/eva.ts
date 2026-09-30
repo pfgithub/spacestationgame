@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { ALL_DIRS, Cell, HALF_OUT, axisOf, cellCenter, dirVec, faceVec } from './constants';
 import { G } from './game';
 import { Rack, registerRack } from './racks';
-import { button, gauge, lamp, text, toggle } from './controls';
+import { button, gauge, lamp, sevenSeg, text } from './controls';
 import { setInteract } from './interact';
 import { registerDoc } from './docs';
 import { doorKey } from './station';
@@ -20,6 +20,14 @@ export class EVA {
   rope: THREE.Line;
   pump: 'idle' | 'depress' | 'repress' = 'idle';
   wasOutside = false;
+  private tautWarned = -10;
+
+  /** Unit vector from the player towards the tether anchor, if tethered. */
+  towardAnchor(): THREE.Vector3 | null {
+    if (!this.tether) return null;
+    const d = this.tether.anchor.clone().sub(G.player.pos);
+    return d.lengthSq() > 0.01 ? d.normalize() : null;
+  }
 
   constructor() {
     G.scene.add(this.anchors);
@@ -59,10 +67,10 @@ export class EVA {
 
   setPump(mode: 'depress' | 'repress' | 'idle') {
     if (mode === 'depress') {
-      if (this.innerDoor.open || this.innerDoor.t > 0) return 'PUMP INHIBIT: INNER HATCH OPEN';
-      if (this.playerInAirlock() && !this.suited) return 'PUMP INHIBIT: CREW NOT SUITED';
+      if (this.innerDoor.open || this.innerDoor.t > 0) return 'E1';
+      if (this.playerInAirlock() && !this.suited) return 'E2';
     }
-    if (mode === 'repress' && (this.outerDoor.open || this.outerDoor.t > 0)) return 'PUMP INHIBIT: OUTER HATCH OPEN';
+    if (mode === 'repress' && (this.outerDoor.open || this.outerDoor.t > 0)) return 'E3';
     this.pump = mode;
     return null;
   }
@@ -104,7 +112,6 @@ export class EVA {
         label: () => (G.station.isInside(G.player.pos) ? null : 'Clip tether here'),
         use: () => this.clip(p),
         range: 2.4,
-        anchor: true,
       });
       this.anchors.add(ring);
     };
@@ -156,18 +163,16 @@ export class EVA {
       const d = p.pos.clone().sub(t.anchor);
       const dist = d.length();
       const dir = d.clone().divideScalar(dist || 1);
-      if (G.input.isDown('KeyF')) {
-        // pull yourself in hand over hand
-        p.vel.addScaledVector(dir, -2.2 * dt);
-        const out = p.vel.dot(dir);
-        if (out < -2.5) p.vel.addScaledVector(dir, -2.5 - out);
-      }
       if (dist > t.length) {
         p.pos.copy(t.anchor).addScaledVector(dir, t.length);
         const vn = p.vel.dot(dir);
         if (vn > 0) {
           p.vel.addScaledVector(dir, -vn * 1.3);
           if (vn > 0.5) G.audio?.bump(vn);
+          if (vn > 0.05 && G.time - this.tautWarned > 3) {
+            this.tautWarned = G.time;
+            G.ui.toast('Your tether snaps tight: that is as far as it reaches from where it is clipped');
+          }
         }
       }
       this.drawRope(dist);
@@ -256,37 +261,32 @@ export class AirlockPanel extends Rack {
   safe!: ReturnType<typeof lamp>;
   press!: ReturnType<typeof lamp>;
   pumping!: ReturnType<typeof lamp>;
-  message = '';
-  msgTimer = 0;
-  msgLabel?: THREE.Object3D;
+  display!: ReturnType<typeof sevenSeg>;
+  code = '';
+  codeTimer = 0;
 
   build() {
-    this.g = gauge(this.group, 0, 0.45, 'PRESSURE kPa x20');
+    this.g = gauge(this.group, -0.45, 0.45, 'kPa x20');
+    this.display = sevenSeg(this.group, 0.45, 0.47, 3, 0.16);
+    text(this.group, 'kPa / CODE', 0.45, 0.33, 0.4, 0.06);
     this.press = lamp(this.group, -0.55, 0.1, 0x33ff66, 'PRESSURISED');
     this.pumping = lamp(this.group, 0, 0.1, 0xffaa22, 'PUMP RUNNING');
     this.safe = lamp(this.group, 0.55, 0.1, 0x3399ff, 'VACUUM');
     button(this.group, -0.35, -0.3, 'DEPRESS', 0xcc3322, () => this.pump('depress'), () => 'Press DEPRESS');
     button(this.group, 0.35, -0.3, 'REPRESS', 0x33aa44, () => this.pump('repress'), () => 'Press REPRESS');
-    text(this.group, 'INNER HATCH MUST BE CLOSED TO DEPRESS', 0, -0.62, 1.4, 0.06, '#8a1a10');
-    text(this.group, 'OUTER HATCH MUST BE CLOSED TO REPRESS', 0, -0.72, 1.4, 0.06, '#8a1a10');
-    void toggle;
+    text(this.group, 'FOR CODES SEE EVA CHECKLIST', 0, -0.62, 1.2, 0.06, '#8a1a10');
   }
 
   pump(mode: 'depress' | 'repress') {
-    const why = G.eva.setPump(mode);
-    if (why) {
+    const code = G.eva.setPump(mode);
+    if (code) {
       G.audio?.beep(200, 0.35);
-      this.showMessage(why);
+      this.code = code;
+      this.codeTimer = 5;
     } else {
       G.audio?.beep(700, 0.1);
       if (mode === 'depress') G.audio?.hiss(10);
     }
-  }
-
-  showMessage(msg: string) {
-    if (this.msgLabel) this.group.remove(this.msgLabel);
-    this.msgLabel = text(this.group, msg, 0, -0.9, 1.6, 0.09, '#ff5533', '#1a0a08');
-    this.msgTimer = 4;
   }
 
   update(dt: number) {
@@ -296,12 +296,12 @@ export class AirlockPanel extends Rack {
     this.press.set(al.pressure >= 99);
     this.safe.set(al.pressure <= 1);
     this.pumping.set(G.eva.pump !== 'idle' && Math.floor(G.time * 3) % 2 === 0);
-    if (this.msgTimer > 0) {
-      this.msgTimer -= dt;
-      if (this.msgTimer <= 0 && this.msgLabel) {
-        this.group.remove(this.msgLabel);
-        this.msgLabel = undefined;
-      }
+    if (this.codeTimer > 0) {
+      this.codeTimer -= dt;
+      // error codes flash
+      this.display.set(Math.floor(G.time * 2.5) % 2 ? this.code : '');
+    } else {
+      this.display.set(String(Math.round(al.pressure)));
     }
   }
 }
@@ -326,9 +326,9 @@ registerDoc('proc-eva', {
 <h2>Outside</h2>
 <ul>
 <li>Your tether is ${TETHER_LEN} metres long. It will not let you drift further than that from where it is clipped.</li>
-<li>To go further, clip on to another yellow ring. The tether then gives you ${TETHER_LEN} metres from that ring.</li>
-<li>You can only push off from something within arm's reach. If you find yourself floating free, haul
-yourself in along the tether (hold F).</li>
+<li>To go further, clip on to another yellow ring (click it). The tether then gives you ${TETHER_LEN} metres from that ring.</li>
+<li>You can only push off from something within arm's reach. If you find yourself floating free, push
+towards where your tether is clipped: you will haul yourself in along it.</li>
 <li>Things you let go of outside stay where you leave them &mdash; mostly.</li>
 </ul>
 <h2>Coming in</h2>
@@ -337,6 +337,12 @@ yourself in along the tether (hold F).</li>
 <li>Press <b>REPRESS</b>. Wait for the green <b>PRESSURISED</b> lamp.</li>
 <li>Take off the suit, and open the inner hatch.</li>
 </ol>
-<p class="note">The airlock will refuse to pump down while its inner hatch is open, or while anyone inside is not
-wearing a suit. The hatches will not open against a pressure difference.</p>`,
+<h2>Airlock control codes</h2>
+<p>The display normally shows the airlock pressure in kPa. If the pump refuses to start, it flashes a code:</p>
+<table>
+<tr><td><b>E1</b></td><td>Inner hatch not closed. The airlock will not pump down with the inner hatch open.</td></tr>
+<tr><td><b>E2</b></td><td>Occupant not suited. Nobody may be in the airlock without a suit while it pumps down.</td></tr>
+<tr><td><b>E3</b></td><td>Outer hatch not closed. Close it before repressurising.</td></tr>
+</table>
+<p class="note">The hatches will not open against a pressure difference.</p>`,
 });

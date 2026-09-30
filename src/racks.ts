@@ -19,7 +19,8 @@ export abstract class Rack {
   movable = true;
   needsPower = false;
   group = new THREE.Group();
-  mount: { cell: Cell; dir: Dir } | null = null;
+  /** Where the rack is bolted. rot is the number of quarter turns about the wall normal. */
+  mount: { cell: Cell; dir: Dir; rot?: number } | null = null;
   private built = false;
 
   /** Populate this.group with meshes/controls (rack-local: x right, y up, z out of the wall). */
@@ -66,6 +67,16 @@ export function registerRack(type: string, f: RackFactory) {
   RACK_TYPES.set(type, f);
 }
 
+/** Quarter turns about a wall's normal that best match the way up the player is looking. */
+export function uprightTurns(d: Dir) {
+  const q = faceQuat(d);
+  const x = new THREE.Vector3(1, 0, 0).applyQuaternion(q);
+  const y = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+  const up = G.player.up;
+  const a = Math.atan2(-up.dot(x), up.dot(y));
+  return ((Math.round(a / (Math.PI / 2)) % 4) + 4) % 4;
+}
+
 const slotKey = (cell: Cell, d: Dir) => `${cellKey(cell)}#${d}`;
 
 export class Racks {
@@ -88,13 +99,13 @@ export class Racks {
     return f();
   }
 
-  mountRack(rack: Rack, cell: Cell, d: Dir) {
+  mountRack(rack: Rack, cell: Cell, d: Dir, rot = 0) {
     rack.ensureBuilt();
-    rack.mount = { cell, dir: d };
+    rack.mount = { cell, dir: d, rot };
     this.bySlot.set(slotKey(cell, d), rack);
     if (!this.list.includes(rack)) this.list.push(rack);
     rack.group.position.copy(cellCenter(cell)).add(dirVec(d).multiplyScalar(HALF_IN));
-    rack.group.quaternion.copy(faceQuat(d));
+    rack.group.quaternion.copy(faceQuat(d)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rot * Math.PI / 2));
     G.scene.add(rack.group);
     this.rebuildBoxes();
   }
@@ -125,7 +136,7 @@ export class Racks {
       accept: (item: Item) => {
         G.items.takeFromHands();
         G.items.remove(item);
-        this.mountRack(item.data.rack, m.cell, d);
+        this.mountRack(item.data.rack, m.cell, d, uprightTurns(d));
         G.audio?.clunk();
       },
     };
