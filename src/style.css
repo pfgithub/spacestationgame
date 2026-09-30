@@ -60,3 +60,5 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .pause .fresh:hover { opacity: 1; }
 .hints { position: absolute; right: 14px; bottom: 12px; font-size: 12px; line-height: 1.55; opacity: 0.7; text-align: right; }
 .hints b { display: inline-block; margin-right: 8px; padding: 0 5px; border: 1px solid rgba(255,255,255,0.5); border-radius: 3px; font-weight: normal; font-size: 11px; }
+.periscope .readout { font-size: 17px; }
+.periscope .msg { position: absolute; left: 0; right: 0; top: 76%; text-align: center; font-size: 17px; color: #ffb35c; text-shadow: 0 0 4px #f60; }

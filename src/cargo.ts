@@ -87,7 +87,8 @@ export class Cargo {
     this.hud = document.createElement('div');
     this.hud.className = 'periscope hidden';
     this.hud.innerHTML = `<div class="reticle"></div><div class="readout"></div>
-      <div class="help">W/S close / open range &middot; A/D left / right &middot; Space/Shift up / down &middot; TAB leave controls</div>`;
+      <div class="msg"></div>
+      <div class="help">S/W close / open range &middot; A/D move target right / left &middot; Shift/Space move target up / down &middot; R start the approach again &middot; TAB leave controls</div>`;
     document.body.appendChild(this.hud);
   }
 
@@ -296,18 +297,37 @@ export class Cargo {
     this.vel.set(0, 0, 0);
   }
 
+  msgT = 0;
+
+  /** Shows a line in the periscope (the normal HUD is hidden while docking). */
+  message(text: string, seconds = 4) {
+    (this.hud.querySelector('.msg') as HTMLElement).textContent = text;
+    this.msgT = seconds;
+  }
+
+  /** Puts the vehicle back at the hold point to start the approach again. */
+  resetApproach() {
+    this.pos.set((Math.random() - 0.5) * 5, (Math.random() - 0.5) * 3, DOCKED_Z - HOLD_RANGE);
+    this.vel.set(0, 0, 0);
+    this.message('Vehicle returned to the hold point.', 2.5);
+  }
+
   updateDocking(dt: number) {
     const inp = G.input;
     if (inp.wasPressed('Tab')) {
       this.leaveDocking();
       return;
     }
+    if (inp.wasPressed('KeyR')) {
+      this.resetApproach();
+      return;
+    }
     // thrusters push the vehicle around; it keeps drifting until you push it the other way
     const axis = (neg: boolean, pos: boolean) => (pos ? 1 : 0) - (neg ? 1 : 0);
     const a = 1.2 * dt;
-    this.vel.x += axis(inp.isDown('KeyA'), inp.isDown('KeyD')) * a;
-    this.vel.y += axis(inp.isDown('ShiftLeft') || inp.isDown('ShiftRight'), inp.isDown('Space')) * a;
-    this.vel.z = THREE.MathUtils.clamp(this.vel.z + axis(inp.isDown('KeyS'), inp.isDown('KeyW')) * a, -3, 3);
+    this.vel.x += axis(inp.isDown('KeyD'), inp.isDown('KeyA')) * a;
+    this.vel.y += axis(inp.isDown('Space'), inp.isDown('ShiftLeft') || inp.isDown('ShiftRight')) * a;
+    this.vel.z = THREE.MathUtils.clamp(this.vel.z + axis(inp.isDown('KeyW'), inp.isDown('KeyS')) * a, -3, 3);
     this.pos.addScaledVector(this.vel, dt);
     const range = DOCKED_Z - this.pos.z;
     if (range <= 0) {
@@ -321,7 +341,9 @@ export class Cargo {
         return;
       }
       G.audio?.bump(3);
-      G.ui.toast(lateral >= CAPTURE_OFFSET ? 'Misaligned: the vehicle glanced off the docking ring' : 'Too fast: the vehicle bounced off the docking ring', 3500);
+      this.message(lateral >= CAPTURE_OFFSET
+        ? `MISALIGNED: ${lateral.toFixed(2)} m off centre (limit ${CAPTURE_OFFSET}). Glanced off the ring.`
+        : `TOO FAST: ${this.vel.z.toFixed(2)} m/s (limit ${CAPTURE_SPEED}). Bounced off the ring.`);
       this.pos.z = DOCKED_Z - 0.05;
       this.vel.z = -Math.abs(this.vel.z) * 0.4 - 0.05;
     }
@@ -332,7 +354,12 @@ export class Cargo {
     cam.position.set(0, 1.3, -6.1);
     cam.quaternion.identity();
     const readout = this.hud.querySelector('.readout') as HTMLElement;
-    readout.innerHTML = `RANGE ${Math.max(0, range).toFixed(1).padStart(5, '0')} m<br>RATE ${(this.vel.z >= 0 ? '+' : '') + this.vel.z.toFixed(2)} m/s`;
+    const sgn = (v: number, d = 2) => (v >= 0 ? '+' : '') + v.toFixed(d);
+    readout.innerHTML = `RANGE ${Math.max(0, range).toFixed(1).padStart(5, '0')} m &nbsp;RATE ${sgn(this.vel.z)} m/s<br>`
+      + `HORIZ ${sgn(this.pos.x)} m &nbsp;DRIFT ${sgn(this.vel.x)} m/s<br>`
+      + `VERT&nbsp; ${sgn(this.pos.y)} m &nbsp;DRIFT ${sgn(this.vel.y)} m/s`;
+    this.msgT -= dt;
+    if (this.msgT <= 0) (this.hud.querySelector('.msg') as HTMLElement).textContent = '';
   }
 
   update(dt: number) {
@@ -416,9 +443,11 @@ wait there. The last stretch is flown by you, from the DOCKING CONTROL panel.</p
 <ol>
 <li>Check the amber <b>VEHICLE HOLDING</b> lamp is lit, and press <b>MANUAL CONTROL</b>. The periscope shows the
 view straight out of the docking port.</li>
-<li>Steer the <b>docking target</b> (the black disc with the white cross) into the middle of the reticle with
-A/D and Space/Shift. The thrusters are strong, but the vehicle keeps drifting until you push it back the other way.</li>
-<li>Close in with W; S slows the approach.</li>
+<li>Steer the <b>docking target</b> (the black disc with the white cross) into the middle of the reticle:
+A and D move it right and left, Shift and Space move it up and down. The HORIZ and VERT readouts show how far off
+centre it is. The thrusters are strong, but the vehicle keeps drifting until you push it back the other way.</li>
+<li>Close in with S; W slows the approach or backs the vehicle off.</li>
+<li>If it all goes wrong, R sends the vehicle back to the hold point to start again.</li>
 <li>The docking ring is forgiving: anywhere near the centre, slower than about <b>1 m/s</b>, and it will latch on.
 Too fast or too far off and the vehicle bounces off. No harm done &mdash; try again.</li>
 <li>After capture, open the hatch at the far end of the DOCKING module.</li>
