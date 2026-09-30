@@ -72,6 +72,11 @@ CATALOG.push(
     deliver: () => [0, 1, 2].map(() => G.items.create('fuse', 'Fuse, 10A')),
   },
   {
+    id: 'brush', name: 'Soft brush', cost: 2, section: 'Equipment',
+    blurb: 'For cleaning delicate surfaces.',
+    deliver: () => [G.items.create('brush', 'Soft brush')],
+  },
+  {
     id: 'plant', name: 'Potted plant', cost: 6, section: 'Comforts',
     blurb: 'A cheerful fern in a velcro pot.', deliver: () => [decor('plant', 'Potted fern')],
   },
@@ -173,16 +178,6 @@ defineItem('modkit', {
     return g;
   },
   label: () => null,
-});
-
-defineItem('filter', {
-  radius: 0.1,
-  build() {
-    const g = simpleBox(0.16, 0.26, 0.16, 0xe6e6e6, labelMesh('CO2', 0.12, 0.06, { fg: '#115' }));
-    const band = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.04, 0.17), new THREE.MeshStandardMaterial({ color: 0x2255aa }));
-    g.add(band);
-    return g;
-  },
 });
 
 defineItem('patch', {

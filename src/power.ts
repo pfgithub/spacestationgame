@@ -3,6 +3,23 @@ import { G } from './game';
 import { boxMesh } from './station';
 import { aabb } from './physics';
 import { solarTexture } from './textures';
+import { setInteract } from './interact';
+import type { Module } from './station';
+
+export const CIRCUITS = ['NODE', 'LAB', 'HAB', 'AIRLOCK', 'DOCK', 'AUX'] as const;
+export type Circuit = (typeof CIRCUITS)[number];
+
+export function circuitOf(m: Module): Circuit | null {
+  switch (m.type) {
+    case 'node': return 'NODE';
+    case 'lab': return 'LAB';
+    case 'hab': return 'HAB';
+    case 'airlock': return 'AIRLOCK';
+    case 'dock': return 'DOCK';
+    case 'ship': return null; // the cargo vehicle has its own batteries
+    default: return 'AUX';
+  }
+}
 
 function grimeTexture() {
   const c = document.createElement('canvas');
@@ -32,6 +49,8 @@ export class Power {
   /** Bus voltage in volts, nominal 28. Batteries smooth over orbital night. */
   voltage = 28;
   grime: THREE.Mesh[] = [];
+  /** Fuse state per circuit: 'ok', 'blown' or 'empty'. */
+  fuses: Record<Circuit, 'ok' | 'blown' | 'empty'> = { NODE: 'ok', LAB: 'ok', HAB: 'ok', AIRLOCK: 'ok', DOCK: 'ok', AUX: 'ok' };
   wingMeshes: THREE.Mesh[] = [];
 
   /** Builds the two solar wings on the mast above NODE 1. */
@@ -47,6 +66,19 @@ export class Power {
       st.exterior.add(wing);
       st.extraBoxes.push(aabb(min, max));
       this.wingMeshes[i] = wing;
+      setInteract(wing, {
+        label: () => {
+          if (G.items.held?.kind !== 'brush') return null;
+          return this.wings[i] >= 0.999 ? 'The panel is clean' : 'Brush the panel clean';
+        },
+        use: () => {
+          if (G.items.held?.kind !== 'brush') return;
+          this.wings[i] = Math.min(1, this.wings[i] + 0.125);
+          G.audio?.paper();
+          if (this.wings[i] >= 1) G.ui.toast('That wing looks clean now');
+        },
+        range: 3,
+      });
       const grime = new THREE.Mesh(
         new THREE.PlaneGeometry(9.8, 3.6),
         new THREE.MeshStandardMaterial({ map: grimeTex, transparent: true, opacity: 0, depthWrite: false, roughness: 1 }),
@@ -60,9 +92,19 @@ export class Power {
     st.rebuild();
   }
 
-  /** Solar output as a fraction of nominal. */
+  /** Solar output as a fraction of nominal (averaged over the orbit: batteries cover the night). */
   output() {
     return (this.wings[0] + this.wings[1]) / 2;
+  }
+
+  /** What an ammeter on wing i reads right now, 0..1 (nothing during orbital night). */
+  wingCurrent(i: number) {
+    return G.world.sunlit ? this.wings[i] : 0;
+  }
+
+  circuitOk(m: Module) {
+    const c = circuitOf(m);
+    return !c || this.fuses[c] === 'ok';
   }
 
   available() {
@@ -74,6 +116,7 @@ export class Power {
     const target = 16 + 12 * this.output();
     this.voltage += (target - this.voltage) * Math.min(1, dt * 0.5);
     for (const m of G.station.modules.values()) {
+      m.powered = this.circuitOk(m);
       const lit = m.powered && this.voltage > 12;
       m.light.intensity = lit ? 2.2 * Math.min(1, (this.voltage - 10) / 16) : 0;
     }

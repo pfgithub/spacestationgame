@@ -20,6 +20,7 @@ import { Cargo } from './cargo';
 import { newOrderForm } from './catalog';
 import { EVA } from './eva';
 import { Construction } from './construction';
+import { LifeSupport } from './life';
 
 const app = document.getElementById('app')!;
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
@@ -54,6 +55,8 @@ G.cargo = new Cargo();
 G.days.nightly.push(() => G.cargo.night());
 G.eva = new EVA();
 new Construction();
+G.life = new LifeSupport();
+G.days.nightly.unshift(() => G.life.night());
 
 document.addEventListener('pointerlockchange', () => {
   if (!G.audio && document.pointerLockElement) {
@@ -90,6 +93,12 @@ function buildInitialStation() {
   const stow = R.create('stowage') as import('./racks').StowageRack;
   R.mountRack(stow, [-1, 0, 0], 5);
   stow.add(makePaper('handbook'));
+  stow.add(G.items.create('filter', 'CO\u2082 cartridge'));
+  stow.add(G.items.create('filter', 'CO\u2082 cartridge'));
+  stow.add(G.items.create('fuse', 'Fuse, 10A'));
+  stow.add(G.items.create('fuse', 'Fuse, 10A'));
+  stow.add(G.items.create('patch', 'Leak patch kit'));
+  stow.add(G.items.create('brush', 'Soft brush'));
   const welcome = makePaper('welcome');
   G.items.place(welcome, new THREE.Vector3(-0.3, 0.2, -0.9));
   welcome.spin.set(0.1, 0.3, 0.05);
@@ -113,6 +122,9 @@ function buildInitialStation() {
   R.mountRack(R.create('airlockctl'), [0, 0, 1], 1);
   stick('proc-eva', new THREE.Vector3(0.6, -1.58, 4.4), new THREE.Vector3(0, 1, 0));
   G.eva.setupInterlocks();
+  R.mountRack(R.create('powerpanel'), [0, 0, 0], 3);
+  R.mountRack(R.create('lifesupport'), [0, 0, 0], 2);
+  stick('manual', new THREE.Vector3(-5.58, 0.3, 0.6), new THREE.Vector3(1, 0, 0));
   G.power.buildArrays();
 
   // the first vehicle is already docked when you arrive
@@ -187,6 +199,7 @@ function simulate(dt: number) {
   G.items.update(dt);
   G.racks.update(dt);
   G.power.update(dt);
+  G.life.update(dt);
   if (!G.cargo.docking) updateInteraction();
 }
 

@@ -9,6 +9,9 @@ export class Days {
 
   canSleep(): string | null {
     if (G.items.held?.kind === 'modkit') return 'Put that down first';
+    if (G.eva.suited) return 'Take the spacesuit off first';
+    const life = G.life.sleepBlocker();
+    if (life) return life;
     return null;
   }
 

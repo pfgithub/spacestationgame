@@ -12,6 +12,7 @@ import type { Power } from './power';
 import type { Science } from './science';
 import type { Cargo } from './cargo';
 import type { EVA } from './eva';
+import type { LifeSupport } from './life';
 
 /** Global game context, filled in by main.ts. */
 export const G = {} as {
@@ -31,6 +32,7 @@ export const G = {} as {
   science: Science;
   cargo: Cargo;
   eva: EVA;
+  life: LifeSupport;
   /** Seconds of game time elapsed. */
   time: number;
   day: number;

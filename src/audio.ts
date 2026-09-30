@@ -94,6 +94,18 @@ export class Audio {
     n.start();
   }
 
+  /** Hiss at a given loudness 0..1. */
+  hissAt(dur: number, level: number) {
+    const n = this.noise(dur);
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.value = 3500;
+    const g = this.ctx.createGain();
+    this.env(g, 0.3, 0.25 * level + 0.0002, dur - 0.3);
+    n.connect(f).connect(g).connect(this.master);
+    n.start();
+  }
+
   paper() {
     const n = this.noise(0.25);
     const f = this.ctx.createBiquadFilter();

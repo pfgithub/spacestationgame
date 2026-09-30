@@ -53,3 +53,5 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .periscope .reticle::after { top: -20vmin; bottom: -20vmin; left: 50%; width: 1px; }
 .periscope .readout { position: absolute; right: 8%; top: 12%; font-size: 20px; line-height: 1.5; }
 .periscope .help { position: absolute; left: 0; right: 0; bottom: 5%; text-align: center; font-size: 14px; opacity: 0.8; }
+.vignette.stale { opacity: 1; animation: throb 3s infinite; }
+@keyframes throb { 50% { opacity: 0.5; } }
