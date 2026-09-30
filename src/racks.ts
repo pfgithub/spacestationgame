@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Cell, Dir, HALF_IN, axisOf, cellCenter, cellKey, dirVec, faceQuat, faceVec } from './constants';
+import { Cell, Dir, HALF_IN, HALF_OUT, axisOf, cellAdd, cellCenter, cellKey, dirVec, faceQuat, faceVec, opposite } from './constants';
 import { G } from './game';
 import { Interactable, setInteract } from './interact';
 import { Item, defineItem, simpleBox } from './items';
@@ -18,6 +18,12 @@ export abstract class Rack {
   color = 0xd4d6d8;
   movable = true;
   needsPower = false;
+  /** Exterior equipment is mounted on the outside of the hull, during a spacewalk. */
+  exterior = false;
+  /** Extra placement rules for exterior equipment: a reason it can't go on this face, or null. */
+  exteriorRule(_m: Module, _d: Dir): string | null {
+    return null;
+  }
   group = new THREE.Group();
   /** Where the rack is bolted. rot is the number of quarter turns about the wall normal. */
   mount: { cell: Cell; dir: Dir; rot?: number } | null = null;
@@ -68,8 +74,8 @@ export function registerRack(type: string, f: RackFactory) {
 }
 
 /** Quarter turns about a wall's normal that best match the way up the player is looking. */
-export function uprightTurns(d: Dir) {
-  const q = faceQuat(d);
+export function uprightTurns(d: Dir, exterior = false) {
+  const q = faceQuat(exterior ? opposite(d) : d);
   const x = new THREE.Vector3(1, 0, 0).applyQuaternion(q);
   const y = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
   const up = G.player.up;
@@ -77,7 +83,7 @@ export function uprightTurns(d: Dir) {
   return ((Math.round(a / (Math.PI / 2)) % 4) + 4) % 4;
 }
 
-const slotKey = (cell: Cell, d: Dir) => `${cellKey(cell)}#${d}`;
+const slotKey = (cell: Cell, d: Dir, exterior = false) => `${exterior ? 'ext:' : ''}${cellKey(cell)}#${d}`;
 
 export class Racks {
   list: Rack[] = [];
@@ -93,6 +99,11 @@ export class Racks {
     return this.bySlot.get(slotKey(cell, d));
   }
 
+  /** Exterior equipment on the outside of this face. */
+  atExt(cell: Cell, d: Dir) {
+    return this.bySlot.get(slotKey(cell, d, true));
+  }
+
   create(type: string) {
     const f = RACK_TYPES.get(type);
     if (!f) throw new Error(`unknown rack ${type}`);
@@ -102,17 +113,18 @@ export class Racks {
   mountRack(rack: Rack, cell: Cell, d: Dir, rot = 0) {
     rack.ensureBuilt();
     rack.mount = { cell, dir: d, rot };
-    this.bySlot.set(slotKey(cell, d), rack);
+    this.bySlot.set(slotKey(cell, d, rack.exterior), rack);
     if (!this.list.includes(rack)) this.list.push(rack);
-    rack.group.position.copy(cellCenter(cell)).add(dirVec(d).multiplyScalar(HALF_IN));
-    rack.group.quaternion.copy(faceQuat(d)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rot * Math.PI / 2));
+    rack.group.position.copy(cellCenter(cell)).add(dirVec(d).multiplyScalar(rack.exterior ? HALF_OUT : HALF_IN));
+    rack.group.quaternion.copy(faceQuat(rack.exterior ? opposite(d) : d)).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rot * Math.PI / 2));
     G.scene.add(rack.group);
+    rack.group.updateMatrixWorld(true);
     this.rebuildBoxes();
   }
 
   unmount(rack: Rack) {
     if (!rack.mount || G.items.held) return;
-    this.bySlot.delete(slotKey(rack.mount.cell, rack.mount.dir));
+    this.bySlot.delete(slotKey(rack.mount.cell, rack.mount.dir, rack.exterior));
     rack.mount = null;
     G.scene.remove(rack.group);
     this.list = this.list.filter((r) => r !== rack);
@@ -126,17 +138,40 @@ export class Racks {
     return m.faces[d] === 'wall' && !this.at(m.cell, d) && m.type !== 'ship';
   }
 
+  /** Why exterior equipment can't go on the outside of this face, or null if it can. */
+  whyNotExterior(rack: Rack, m: Module, d: Dir): string | null {
+    if (m.type === 'ship') return 'not on the cargo vehicle';
+    if (m.faces[d] !== 'wall') return 'there is a hatch or window here';
+    if (this.atExt(m.cell, d)) return 'something is already mounted here';
+    const beyond = cellAdd(m.cell, d);
+    if (G.station.get(beyond)) return 'this wall faces another module';
+    if (G.station.reserved.has(cellKey(beyond))) return 'that space must be kept clear';
+    return rack.exteriorRule(m, d);
+  }
+
   private wallInteract(m: Module, d: Dir): Interactable {
+    const outside = () => !G.station.isInside(G.player.pos);
     return {
       acceptLabel: (item: Item) => {
         if (item.kind !== 'crate') return null;
-        if (!this.canInstall(m, d)) return null;
-        return `Install ${item.data.rack.title} rack here`;
+        const rack = item.data.rack as Rack;
+        if (rack.exterior) {
+          if (!outside()) return null;
+          const why = this.whyNotExterior(rack, m, d);
+          return why ? `Can't mount the ${rack.title} here: ${why}` : `Mount the ${rack.title} on the hull here`;
+        }
+        if (outside() || !this.canInstall(m, d)) return null;
+        return `Install ${rack.title} rack here`;
       },
       accept: (item: Item) => {
+        const rack = item.data.rack as Rack;
+        if (rack.exterior && this.whyNotExterior(rack, m, d)) {
+          G.audio?.beep(220, 0.2);
+          return;
+        }
         G.items.takeFromHands();
         G.items.remove(item);
-        this.mountRack(item.data.rack, m.cell, d, uprightTurns(d));
+        this.mountRack(rack, m.cell, d, uprightTurns(d, rack.exterior));
         G.audio?.clunk();
       },
     };
@@ -148,8 +183,9 @@ export class Racks {
       if (!r.mount) continue;
       const { cell, dir } = r.mount;
       const c = cellCenter(cell);
-      const a = faceVec(dir, HALF_IN - 0.14, -RACK_W / 2, -RACK_H / 2).add(c);
-      const b = faceVec(dir, HALF_IN, RACK_W / 2, RACK_H / 2).add(c);
+      const [near, far] = r.exterior ? [HALF_OUT, HALF_OUT + 0.14] : [HALF_IN - 0.14, HALF_IN];
+      const a = faceVec(dir, near, -RACK_W / 2, -RACK_H / 2).add(c);
+      const b = faceVec(dir, far, RACK_W / 2, RACK_H / 2).add(c);
       this.boxes.push(aabb(a.clone().min(b), a.clone().max(b)));
     }
   }

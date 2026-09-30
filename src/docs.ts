@@ -118,9 +118,12 @@ rewarding place to work.</p>
 <p>As you know, the station carries no computers and no radio: every word between us travels on paper.
 Here is how things work.</p>
 <h2>Science</h2>
-<p>The racks in the LAB are experiments. Each has a written <b>procedure</b> somewhere aboard &mdash; we recommend
-you read it before touching anything. When an experiment produces a result it prints a report slip.
-Send the slips down to us and we will credit you with <b>science points</b>.</p>
+<p>For now the LAB holds a single experiment, the crystal furnace. Its written <b>procedure</b> is stuck to the lab wall
+&mdash; we recommend you read it before touching anything. When an experiment produces a result it prints a report slip
+(some produce film, or samples). Send them down to us and we will credit you with <b>science points</b>.</p>
+<p>Spend your points on more experiments &mdash; the order form lists them. Some live outside the station; some
+send samples home. When you finish an experiment's series you may keep repeating it for half the points, and
+there is always one free experiment on offer, so you will never run out of work.</p>
 <h2>Mail and supplies</h2>
 <p>A cargo vehicle visits every night while you sleep. Anything you leave inside the docked vehicle comes
 home with it &mdash; that is how your reports and order forms reach us. The next vehicle brings whatever you

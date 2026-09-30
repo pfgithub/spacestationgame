@@ -18,6 +18,14 @@ export class Science {
   /** Completed runs per experiment type. */
   progress: Record<string, number> = {};
   completed = new Set<string>();
+  /** Per-frame hooks for things that change over time outside racks (thawing samples, ...). */
+  tickers: ((dt: number) => void)[] = [];
+  /** Hooks that get a last look at items as they leave for the ground (e.g. judging returned samples). */
+  sendHooks: ((items: Item[]) => void)[] = [];
+
+  update(dt: number) {
+    for (const t of this.tickers) t(dt);
+  }
 
   /** Experiment types currently aboard (mounted or packed). */
   get owned() {
@@ -41,6 +49,7 @@ export class Science {
 
   /** Called when items reach the ground. Returns a summary for the statement letter. */
   receive(items: Item[]) {
+    for (const h of this.sendHooks) h(items);
     const lines: string[] = [];
     let sum = 0;
     for (const it of items) {

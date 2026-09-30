@@ -26,6 +26,8 @@ const PUSH_KEYS: [string, [number, number, number]][] = [
 
 interface Push {
   key: string;
+  /** A push that is bringing us to a stop. */
+  stop: boolean;
   t: number;
   /** Total velocity change this push applies, spread over its duration. */
   delta: THREE.Vector3;
@@ -84,13 +86,19 @@ export class Player {
     const along = this.vel.dot(dir);
     const speed = this.vel.length();
     let target: THREE.Vector3;
-    if (speed > 0.05 && along / speed < STOP_DOT) {
+    let stop = false;
+    if ((this.push?.stop && this.push.key === key) || this.blockedKey === key) {
+      // pressing again while stopping: skip the rest of the stop and push off that way at once
+      target = dir.multiplyScalar(SPEED_UNIT);
+      this.blockedKey = null;
+    } else if (speed > 0.05 && along / speed < STOP_DOT) {
       target = new THREE.Vector3();
       this.blockedKey = key;
+      stop = true;
     } else {
       target = dir.multiplyScalar(Math.max(0, along) + SPEED_UNIT);
     }
-    this.push = { key, t: 0, delta: target.sub(this.vel), eased: 0 };
+    this.push = { key, stop, t: 0, delta: target.sub(this.vel), eased: 0 };
     G.audio?.push();
   }
 
@@ -101,8 +109,8 @@ export class Player {
     const yaw = -inp.mouseDX * this.mouseSens;
     const pitch = -inp.mouseDY * this.mouseSens;
     let rollTarget = 0;
-    if (inp.isDown('KeyQ')) rollTarget -= 1.6;
-    if (inp.isDown('KeyE')) rollTarget += 1.6;
+    if (inp.isDown('KeyQ')) rollTarget += 1.6;
+    if (inp.isDown('KeyE')) rollTarget -= 1.6;
     this.rollVel += (rollTarget - this.rollVel) * Math.min(1, dt * 6);
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, this.rollVel * dt, 'YXZ'));
     this.quat.multiply(q).normalize();

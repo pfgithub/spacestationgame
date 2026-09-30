@@ -39,6 +39,12 @@ export class Construction {
     if (target[0] === 0 && target[1] === 0 && target[2] <= -2) return 'That would block the cargo vehicle approach';
     if (Math.abs(target[1]) > 1) return 'Modules may only be one level above or below the main deck';
     if (G.racks.at(m.cell, d)) return 'A rack is mounted on the inside of this wall';
+    if (G.racks.atExt(m.cell, d)) return 'Equipment is mounted on the outside of this wall';
+    // the new module would bury equipment mounted on the outside of any neighbouring module
+    for (const f of ALL_DIRS) {
+      const n = st.get(cellAdd(target, f));
+      if (n && G.racks.atExt(n.cell, opposite(f))) return `It would cover equipment mounted outside ${n.name}`;
+    }
     return null;
   }
 
@@ -104,6 +110,7 @@ export class Construction {
     const door = G.station.doors.get(doorKey(m.cell, conns[0]));
     if (door && (door.open || door.t > 0)) return 'Its hatch is open';
     if (ALL_DIRS.some((d) => G.racks.at(m.cell, d))) return 'It still has racks in it';
+    if (ALL_DIRS.some((d) => G.racks.atExt(m.cell, d))) return 'It still has equipment mounted outside';
     if (G.items.list.some((i) => (i.state === 'float' || i.state === 'stuck') && G.station.moduleAt(i.pos) === m)) return 'There are loose things inside';
     if (G.station.moduleAt(G.player.pos) === m) return 'You are inside it';
     return null;

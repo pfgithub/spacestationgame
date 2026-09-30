@@ -17,6 +17,7 @@ import { makePaper } from './docs';
 import { Science } from './science';
 import './experiments';
 import './experiments2';
+import { initExperiments3 } from './experiments3';
 import { Cargo } from './cargo';
 import { newOrderForm } from './catalog';
 import { EVA } from './eva';
@@ -58,6 +59,7 @@ G.days.nightly.push(() => G.cargo.night());
 G.eva = new EVA();
 new Construction();
 G.life = new LifeSupport();
+initExperiments3();
 G.days.nightly.unshift(() => G.life.night());
 
 document.addEventListener('pointerlockchange', () => {
@@ -110,9 +112,8 @@ function seedNewGame() {
   G.items.place(welcome, new THREE.Vector3(-0.3, 0.2, -0.9));
   welcome.spin.set(0.1, 0.3, 0.05);
 
+  // the station starts with a single experiment; the rest are ordered from the ground
   R.mountRack(R.create('crystal'), [1, 0, 0], 0);
-  R.mountRack(R.create('botany'), [1, 0, 0], 4);
-  R.mountRack(R.create('fluid'), [1, 0, 0], 5);
   // procedures are velcroed to the lab walls
   const stick = (doc: string, pos: THREE.Vector3, normal: THREE.Vector3) => {
     const p = makePaper(doc);
@@ -120,8 +121,6 @@ function seedNewGame() {
     G.items.place(p, pos, new THREE.Vector3(), 'stuck');
   };
   stick('proc-crystal', new THREE.Vector3(5.2, -1.58, 0.9), new THREE.Vector3(0, 1, 0));
-  stick('proc-botany', new THREE.Vector3(4.2, -1.58, 0.9), new THREE.Vector3(0, 1, 0));
-  stick('proc-fluid', new THREE.Vector3(4.2, -1.58, -0.9), new THREE.Vector3(0, 1, 0));
 
   R.mountRack(R.create('dockpanel'), [0, 0, -1], 0);
   stick('proc-docking', new THREE.Vector3(0.9, -1.58, -4.2), new THREE.Vector3(0, 1, 0));
@@ -181,7 +180,9 @@ function updateInteraction() {
     break;
   }
   const held = G.items.held;
-  const primary = focused?.label?.() ?? null;
+  const heldAct = G.items.heldAction();
+  const focusedLabel = focused?.label?.() ?? null;
+  const primary = focusedLabel ?? heldAct?.label ?? null;
   let secondary: string | null;
   let secondaryAction: (() => void) | undefined;
   if (held) {
@@ -199,7 +200,10 @@ function updateInteraction() {
     secondaryAction = () => focused?.alt?.();
   }
   G.ui.setPrompt(primary, secondary);
-  if (focused && G.input.clicked(0) && primary) focused.use?.();
+  if (G.input.clicked(0) && primary) {
+    if (focusedLabel) focused!.use?.();
+    else heldAct?.use();
+  }
   if (G.input.clicked(2) && secondary) secondaryAction?.();
   if (G.input.wasPressed('KeyR') && held && !G.items.readHeld()) G.ui.toast(`Nothing to read on the ${held.name}`);
 }
@@ -219,6 +223,7 @@ function simulate(dt: number) {
   G.racks.update(dt);
   G.power.update(dt);
   G.life.update(dt);
+  G.science.update(dt);
   if (!G.cargo.docking) updateInteraction();
 }
 

@@ -208,8 +208,13 @@ export class Cargo {
     }
     // anything that isn't mail or rubbish was surely sent by mistake: it comes back on the next vehicle
     const rubbish = (i: Item) => i.data.report !== undefined || i.data.doc === 'order' || i.data.blown || i.data.spent
-      || (i.kind === 'paper' && !i.data.doc);
+      || (i.kind === 'paper' && !i.data.doc) || i.data.rack?.broken || i.data.dead || i.data.spoiled;
     const returned = sent.filter((i) => !rubbish(i));
+    const scrapped = sent.filter((i) => i.data.rack?.broken);
+    const scrapNote = scrapped.length
+      ? `<p>We received the damaged ${scrapped.map((s) => s.data.rack.title.toLowerCase()).join(' and ')}. It is beyond repair and has been
+        scrapped. You may order a replacement whenever you like.</p>`
+      : '';
     const thanks = returned.length
       ? `<p>The last vehicle also brought down: ${returned.map((o) => o.name).join(', ')}. We assume this was a mistake,
         and ${returned.length === 1 ? 'it is' : 'they are'} aboard this vehicle.</p>`
@@ -221,7 +226,7 @@ export class Cargo {
     const html = `<h1>STATEMENT</h1><div class="meta">Ground Operations &middot; Day ${G.day}</div>
       <h2>Reports received</h2>${reportTable}
       ${forms.length || hadOrder ? `<h2>Orders</h2>${orderLines.join('') || '<p>Your order form was blank.</p>'}` : ''}
-      ${thanks}
+      ${thanks}${scrapNote}
       <h2>Balance</h2><p>Your balance is now <b>${G.science.balance} points</b>.</p>
       ${sent.length === 0 && this.vehicleNo > 2 ? '<p class="note">The last vehicle left empty. Remember: leave reports and order forms inside the vehicle before you sleep.</p>' : ''}
       <p style="text-align:right">&mdash; Ground Operations</p>`;

@@ -41,15 +41,19 @@ Racks and anything you stick to a wall are installed the way up you are facing, 
 You live alone on a small station orbiting the Earth. There are no computers and no radio: everything
 travels on paper.
 
-- **Science.** The LAB has three experiment racks (crystal furnace, plant habitat, fluid physics). They don't explain
-  themselves; each has a written procedure stuck to the lab walls. Advancing an experiment prints a result slip
-  (or ejects a film canister) worth science points.
+- **Science.** The station starts with one experiment, the crystal furnace. Experiments don't explain themselves;
+  each comes with a written procedure. Advancing one prints a result slip, ejects a film canister or produces a sample,
+  worth science points once it reaches the ground. Finished experiments can be repeated at half the points.
 - **Mail.** A cargo vehicle is docked when you arrive. Anything you leave inside it goes to the ground when it
   leaves during the night: slips and film are credited as points, and the order form is filled against your
   balance. The next morning a new vehicle waits 35 m out with a statement, a fresh order form and whatever you
   ordered, until you fly it in from the DOCKING CONTROL periscope.
-- **Things to buy.** Corridor and cupola modules, two further experiments (radiation dosimetry and Earth
-  photography), spare parts, and decorations.
+- **Things to buy.** Corridor and cupola modules, spare parts, decorations, and eleven more experiments:
+  a free student droplet kit, an exercise bike, plant growth, fluid physics, air microbiology (carry a sampler
+  between modules), yeast fermentation (incubate, freeze, and get it to the cargo vehicle before it thaws),
+  radiation dosimetry (badges left around the station overnight), a materials exposure panel (mounted outside;
+  trays come home), a combustion chamber (misuse burns it out and it must be replaced), and an Earth camera
+  (needs a window). Some can be spoiled or destroyed and have to be sent home and bought again.
 - **Building.** Every rack can be unbolted into a crate and installed on any free wall. Module kits are installed
   from outside: suit up, cycle the airlock, and deploy the kit against a bare hull wall. Empty, closed-off modules
   can be packed back up.
@@ -69,7 +73,7 @@ The game saves every morning and whenever you leave the page. "Start over" on th
 | `src/player.ts` | zero-g push-off movement |
 | `src/station.ts` | module grid, hatches, collision boxes |
 | `src/racks.ts`, `src/controls.ts` | movable wall racks and their buttons, dials, gauges |
-| `src/experiments.ts`, `src/experiments2.ts` | the five experiments and their procedures |
+| `src/experiments*.ts` | the experiments and their procedures |
 | `src/items.ts`, `src/docs.ts` | loose items, papers and stock documents |
 | `src/cargo.ts`, `src/catalog.ts` | cargo vehicles, docking, mail, the order form |
 | `src/eva.ts`, `src/construction.ts` | airlock, suit, tether; deploying and packing modules |

@@ -100,12 +100,11 @@ export class DosimetryRack extends Experiment {
       const dose = w ? (w === 'OUTSIDE' ? 1.8 : w.startsWith('CUPOLA') ? 0.61 : 0.4) + Math.random() * 0.08 : 0;
       return `D${b.data.n} ... ${w ? w.padEnd(14, '.') : 'NOT EXPOSED...'} ${dose.toFixed(2)} mGy`;
     });
-    const valid = distinct.size === BADGES && !this.complete;
+    const valid = distinct.size === BADGES;
     const pos = new THREE.Vector3(0.35, -0.5, 0.12);
     if (valid) {
-      const run = this.finishRun();
       G.science.printSlip(this, pos, 'DOSIMETRY SURVEY', [...lines, 'SURVEY ......... COMPLETE'],
-        { exp: this.type, expTitle: 'Radiation dosimetry', run, points: this.points });
+        this.completeRun('Radiation dosimetry'));
     } else {
       G.science.printSlip(this, pos, 'DOSIMETRY SURVEY', [...lines, 'SURVEY ......... INCOMPLETE'], null);
     }
@@ -217,7 +216,6 @@ export class EarthCamRack extends Experiment {
   }
 
   shoot() {
-    if (this.complete) return;
     G.audio?.click();
     if (!this.advanced) {
       // double exposure spoils the previous frame
@@ -243,9 +241,8 @@ export class EarthCamRack extends Experiment {
     const film = G.items.create('film', 'Film: Earth photographs', { caption: 'Earth photographs' });
     film.data.report = null;
     if (good.size > 0) {
-      const run = this.finishRun();
-      film.data.report = { exp: this.type, expTitle: `Earth photography (${good.size} of ${TARGETS.length} targets)`, run, points: this.points * good.size };
-      film.name = `Film: Earth photographs, roll ${run}`;
+      film.data.report = this.completeRun(`Earth photography (${good.size} of ${TARGETS.length} targets)`, good.size);
+      film.name = `Film: Earth photographs, roll ${film.data.report.run}`;
     }
     this.frames = [];
     this.advanced = true;

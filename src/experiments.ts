@@ -3,6 +3,7 @@ import { G } from './game';
 import { Rack, registerRack } from './racks';
 import { button, dial, gauge, lamp, text, toggle } from './controls';
 import { registerDoc } from './docs';
+import type { Report } from './science';
 import { setInteract } from './interact';
 
 const glassMat = new THREE.MeshStandardMaterial({ color: 0xaaccee, transparent: true, opacity: 0.22, roughness: 0.05, depthWrite: false });
@@ -19,40 +20,56 @@ function chamber(parent: THREE.Object3D, x: number, y: number, w: number, h: num
   return { back, glass };
 }
 
-/** Shared pieces for experiment racks: run counting, completion stamp, power dependence. */
+/**
+ * Shared pieces for experiment racks: run counting, series, power dependence.
+ * After a full series the experiment carries on as a repeat series, worth half as much.
+ */
 export abstract class Experiment extends Rack {
   needsPower = true;
   abstract runsNeeded: number;
   abstract points: number;
   runs = 0;
+  series = 1;
+  /** A rack destroyed by misuse: it does nothing and should go home. */
+  broken = false;
   stamp?: THREE.Object3D;
 
-  get complete() {
-    return this.runs >= this.runsNeeded;
+  /** Points each run is worth in the current series. */
+  get award() {
+    return this.series > 1 ? Math.ceil(this.points / 2) : this.points;
   }
 
-  finishRun() {
+  /** Records a successful run and returns the report for its slip / film / sample. */
+  completeRun(expTitle: string, multiplier = 1): Report {
+    const points = this.award * multiplier;
+    const series = this.series;
     this.runs++;
+    const run = this.runs;
     G.science.progress[this.type] = this.runs;
-    if (this.complete) {
+    if (this.runs >= this.runsNeeded) {
       G.science.completed.add(this.type);
+      this.series++;
+      this.runs = 0;
       this.showStamp();
     }
-    return this.runs;
+    return { exp: this.type, expTitle: series > 1 ? `${expTitle} (repeat series)` : expTitle, run, points };
   }
 
   showStamp() {
-    if (this.stamp || !this.complete) return;
-    this.stamp = text(this.group, 'EXPERIMENT COMPLETE', 0, RACK_STAMP_Y, 1.6, 0.14, '#b01c10', '#f3eee0');
+    if (this.series < 2) return;
+    if (this.stamp) this.group.remove(this.stamp);
+    this.stamp = text(this.group, `SERIES ${this.series - 1} DONE · REPEATS HALF CREDIT`, 0, RACK_STAMP_Y, 1.8, 0.1, '#b01c10', '#f3eee0');
     this.stamp.position.z = 0.4;
-    this.stamp.rotation.z = 0.05;
+    this.stamp.rotation.z = 0.03;
   }
 
   serialize(): Record<string, any> {
-    return { runs: this.runs };
+    return { runs: this.runs, series: this.series, broken: this.broken };
   }
   deserialize(d: Record<string, any>) {
     this.runs = d.runs ?? 0;
+    this.series = d.series ?? 1;
+    this.broken = d.broken ?? false;
     this.showStamp();
   }
 }
@@ -115,7 +132,7 @@ export class CrystalRack extends Experiment {
   }
 
   seed() {
-    if (!this.powered || this.complete) return;
+    if (!this.powered) return;
     if (this.fault || this.phase !== 'empty' || !this.isReady) {
       G.audio?.beep(220, 0.2);
       return;
@@ -138,14 +155,13 @@ export class CrystalRack extends Experiment {
     }
     const pos = new THREE.Vector3(0.55, -0.8, 0.12);
     if (this.phase === 'grown') {
-      const run = this.finishRun();
       G.science.printSlip(this, pos, 'CRYSTAL FURNACE RESULT', [
         `SAMPLE ........ LYSOZYME`,
         `NUCLEATION .... 4`,
         `GROWTH ........ 2`,
         `SIZE .......... ${(0.8 + Math.random() * 0.3).toFixed(2)} MM`,
         `QUALITY ....... GOOD`,
-      ], { exp: this.type, expTitle: 'Crystal growth', run, points: this.points });
+      ], this.completeRun('Crystal growth'));
     } else {
       G.science.printSlip(this, pos, 'CRYSTAL FURNACE RESULT', [
         `SAMPLE ........ LYSOZYME`,
@@ -248,7 +264,6 @@ export class BotanyRack extends Experiment {
   }
 
   water() {
-    if (this.complete) return;
     this.moisture = Math.min(5, this.moisture + 2);
     G.audio?.hiss(0.6);
   }
@@ -261,17 +276,16 @@ export class BotanyRack extends Experiment {
     }
     this.measuredToday = true;
     const pos = new THREE.Vector3(0.55, -0.7, 0.12);
-    const healthy = this.moisture >= 2 && this.moisture <= 4 && this.lampTime >= 60 && !this.litAtNight && !this.complete;
+    const healthy = this.moisture >= 2 && this.moisture <= 4 && this.lampTime >= 60 && !this.litAtNight;
     if (healthy) {
       this.stage++;
-      const run = this.finishRun();
       G.science.printSlip(this, pos, 'PLANT HABITAT READING', [
         `SPECIMEN ...... ARABIDOPSIS`,
         `HEIGHT ........ ${(this.stage * 2.1 + Math.random()).toFixed(1)} CM`,
         `LEAVES ........ ${this.stage + 2}`,
         `MOISTURE ...... ${this.moisture.toFixed(1)}`,
         `CONDITION ..... HEALTHY`,
-      ], { exp: this.type, expTitle: 'Plant growth', run, points: this.points });
+      ], this.completeRun('Plant growth'));
     } else {
       G.science.printSlip(this, pos, 'PLANT HABITAT READING', [
         `SPECIMEN ...... ARABIDOPSIS`,
@@ -389,14 +403,13 @@ export class FluidRack extends Experiment {
       G.ui.toast('*click*');
       return;
     }
-    const valid = this.isStill && this.shakes === 3 && !this.contaminated && !this.photographed && !this.complete;
+    const valid = this.isStill && this.shakes === 3 && !this.contaminated && !this.photographed;
     const film = G.items.create('film', valid ? `Film: fluid run ${this.runs + 1}` : 'Film: fluid physics', {
       caption: valid ? `fluid run ${this.runs + 1}` : 'fluid physics',
     });
     film.data.report = null;
     if (valid) {
-      const run = this.finishRun();
-      film.data.report = { exp: this.type, expTitle: 'Fluid physics', run, points: this.points };
+      film.data.report = this.completeRun('Fluid physics');
     }
     this.photographed = true;
     const world = new THREE.Vector3(0.55, -0.55, 0.15).applyMatrix4(this.group.matrixWorld);
@@ -443,7 +456,7 @@ export class FluidRack extends Experiment {
 }
 registerRack('fluid', () => new FluidRack());
 
-export { setInteract };
+export { setInteract, chamber };
 
 // ------------------------------------------------------------------------------------------------
 // Procedures

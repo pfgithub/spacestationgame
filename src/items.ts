@@ -15,7 +15,11 @@ export type ItemKind =
   | 'water'
   | 'decor'
   | 'fuse'
-  | 'badge';
+  | 'badge'
+  | 'airsampler'
+  | 'yeastbag'
+  | 'exptray'
+  | 'fuel';
 
 export interface Item {
   id: number;
@@ -36,6 +40,9 @@ export interface ItemDef {
   /** Primary action on a loose item (left click). */
   label?(item: Item): string | null;
   use?(item: Item): void;
+  /** Left click while holding the item and not looking at anything usable. */
+  heldLabel?(item: Item): string | null;
+  heldUse?(item: Item): void;
   /** Called when R is pressed while holding the item. */
   read?(item: Item): void;
   radius?: number;
@@ -235,6 +242,15 @@ export class Items {
     renderer.clearDepth();
     renderer.render(this.heldScene, this.heldCam);
     renderer.autoClear = true;
+  }
+
+  /** The action for the held item itself, if it has one right now. */
+  heldAction(): { label: string; use: () => void } | null {
+    const item = this.held;
+    if (!item) return null;
+    const def = defs.get(item.kind)!;
+    const label = def.heldLabel?.(item);
+    return label ? { label, use: () => def.heldUse?.(item) } : null;
   }
 
   readHeld() {

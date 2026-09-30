@@ -3,7 +3,6 @@ import { G } from './game';
 import { Item, defineItem, simpleBox } from './items';
 import { makePaper, registerDoc } from './docs';
 import { labelMesh } from './textures';
-import { RACK_TYPES } from './racks';
 
 export interface CatalogEntry {
   id: string;
@@ -18,6 +17,19 @@ export interface CatalogEntry {
 }
 
 export const CATALOG: CatalogEntry[] = [];
+
+/** A standard experiment order: its rack, its procedure and any extras. Hidden while one is aboard. */
+function experiment(id: string, name: string, cost: number, blurb: string, rack: string, proc: string, extras: () => Item[] = () => []): CatalogEntry[] {
+  return [{
+    id, name, cost, section: 'Experiments', blurb: `${blurb} Rack and procedure included.`,
+    deliver: () => [rackCrate(rack), makePaper(proc), ...extras()],
+    available: () => !G.science.owned.has(rack),
+  }];
+}
+
+const trays = (n: number) => Array.from({ length: n }, () => G.items.create('exptray', 'Sample tray', { nights: 0 }));
+const yeastBags = (n: number) => Array.from({ length: n }, () => G.items.create('yeastbag', 'Yeast bag (not started)', {}));
+const fuel = (n: number) => Array.from({ length: n }, () => G.items.create('fuel', 'Fuel cartridge'));
 
 function rackCrate(type: string) {
   const rack = G.racks.create(type);
@@ -39,21 +51,57 @@ CATALOG.push(
     blurb: 'A module with a large window. Needed for Earth photography.',
     deliver: () => [G.items.create('modkit', 'Cupola module kit', { moduleType: 'cupola' }), makePaper('proc-install')],
   },
+  ...experiment('exp-droplet', 'Student droplet kit', 0, 'A school class\'s experiment on water in weightlessness. Free of charge, with the pupils\' thanks.',
+    'droplet', 'proc-droplet'),
+  ...experiment('exp-ergometer', 'Exercise study', 12, 'A cycle ergometer, and a daily exercise study to go with it.', 'ergometer', 'proc-ergometer'),
+  ...experiment('exp-botany', 'Plant growth study', 20, 'A plant habitat and six days in the life of a small plant.', 'botany', 'proc-botany'),
+  ...experiment('exp-fluid', 'Fluid physics study', 25, 'Photographs of bubbles in weightless liquids.', 'fluid', 'proc-fluid'),
   {
-    id: 'exp-dosimetry', name: 'Radiation dosimetry experiment', cost: 35, section: 'Experiments',
-    blurb: 'Measures the radiation dose in different parts of the station. Rack and procedure included.',
+    id: 'exp-micro', name: 'Microbiology kit', cost: 30, section: 'Experiments',
+    blurb: 'An incubator and a portable air sampler, for surveying the microbes living in each module.',
+    deliver: () => [rackCrate('incubator'), G.items.create('airsampler', 'Air sampler', { samples: [], incubated: 0 }), makePaper('proc-microbiology')],
+    available: () => !G.science.owned.has('incubator'),
+  },
+  {
+    id: 'exp-yeast', name: 'Yeast fermentation study', cost: 35, section: 'Experiments',
+    blurb: 'Grow yeast, freeze it, and send it home for analysis. Includes a sample freezer and three culture bags. Needs the incubator from the microbiology kit.',
+    deliver: () => [rackCrate('freezer'), ...yeastBags(3), makePaper('proc-yeast')],
+    available: () => G.science.owned.has('incubator') && !G.science.owned.has('freezer'),
+  },
+  {
+    id: 'exp-dosimetry', name: 'Radiation dosimetry survey', cost: 35, section: 'Experiments',
+    blurb: 'Measures the radiation dose in different parts of the station. Reader rack, four badges and procedure.',
     deliver: () => {
       const crate = rackCrate('dosimetry');
       const badges = (crate.data.rack as import('./experiments2').DosimetryRack).makeBadges();
       return [crate, makePaper('proc-dosimetry'), ...badges];
     },
-    available: () => RACK_TYPES.has('dosimetry') && !G.science.owned.has('dosimetry'),
+    available: () => !G.science.owned.has('dosimetry'),
   },
   {
-    id: 'exp-earthobs', name: 'Earth observation camera', cost: 50, section: 'Experiments',
-    blurb: 'A large-format camera for photographing the Earth. Must be mounted beside a window. Rack and procedure included.',
-    deliver: () => [rackCrate('earthcam'), makePaper('proc-earthcam')],
-    available: () => RACK_TYPES.has('earthcam') && !G.science.owned.has('earthcam'),
+    id: 'exp-exposure', name: 'Materials exposure panel', cost: 40, section: 'Experiments',
+    blurb: 'A panel mounted outside the station that exposes material samples to space. Two sample trays included.',
+    deliver: () => [rackCrate('exposure'), ...trays(2), makePaper('proc-exposure')],
+    available: () => !G.science.owned.has('exposure'),
+  },
+  ...experiment('exp-combustion', 'Combustion chamber', 45, 'Studies flames in weightlessness. Three fuel cartridges included. Handle with care.',
+    'combustion', 'proc-combustion', () => fuel(3)),
+  ...experiment('exp-earthobs', 'Earth observation camera', 50, 'A large-format camera for photographing the Earth. Must be mounted beside a window.',
+    'earthcam', 'proc-earthcam'),
+  {
+    id: 'trays', name: 'Exposure sample trays (2)', cost: 8, section: 'Equipment',
+    blurb: 'Fresh material sample trays for the exposure panel.', deliver: () => trays(2),
+    available: () => G.science.owned.has('exposure'),
+  },
+  {
+    id: 'yeastbags', name: 'Yeast culture bags (3)', cost: 8, section: 'Equipment',
+    blurb: 'Fresh culture bags for the yeast study.', deliver: () => yeastBags(3),
+    available: () => G.science.owned.has('freezer'),
+  },
+  {
+    id: 'fuel', name: 'Fuel cartridges (3)', cost: 6, section: 'Equipment',
+    blurb: 'For the combustion chamber.', deliver: () => fuel(3),
+    available: () => G.science.owned.has('combustion'),
   },
   {
     id: 'stowage', name: 'Stowage rack', cost: 10, section: 'Equipment',
@@ -123,6 +171,7 @@ registerDoc('order', {
     const sel = item.data.selected as string[];
     div.innerHTML = `<h1>SUPPLY ORDER FORM</h1>
       <div class="meta">Tick what you would like. Leave this form in the cargo vehicle before you sleep.<br>
+      Experiments you have finished can be run again as repeat series, for half the points.<br>
       Balance on your last statement: <b>${G.science.balance} points</b></div>`;
     let section = '';
     for (const c of CATALOG) {
@@ -161,7 +210,7 @@ registerDoc('order', {
     div.appendChild(total);
     const note = document.createElement('p');
     note.className = 'note';
-    note.textContent = 'Orders exceeding your balance (including reports sent with this form) cannot be filled and will be returned.';
+    note.textContent = 'Reports you send on the same vehicle are credited before your order is filled, so they count towards it. Orders that still exceed your balance cannot be filled.';
     div.appendChild(note);
     return div;
   },
