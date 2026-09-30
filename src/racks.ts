@@ -243,6 +243,13 @@ export class StowageRack extends Rack {
     this.contents.push(item);
   }
 
+  serialize() {
+    return { contents: this.contents };
+  }
+  deserialize(d: Record<string, any>) {
+    this.contents = (d.contents ?? []).filter(Boolean);
+  }
+
   open() {
     const div = document.createElement('div');
     div.className = 'paper typed';

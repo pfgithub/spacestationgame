@@ -116,6 +116,15 @@ export class DosimetryRack extends Experiment {
     }
   }
 
+  serialize() {
+    return { ...super.serialize(), loaded: this.loaded };
+  }
+  deserialize(d: Record<string, any>) {
+    super.deserialize(d);
+    this.loaded = (d.loaded ?? []).filter(Boolean);
+    if (this.holders.length) this.sync();
+  }
+
   update() {
     this.lampOk.set(this.powered && this.loaded.length === BADGES);
   }

@@ -44,8 +44,18 @@ export class UI {
         <div><b>R</b> read the paper you are holding</div>
         <div><b>T</b> clip tether (spacewalk) &nbsp; <b>F</b> (hold) reel in tether</div>
       </div>
-      <p class="go">Click to continue</p>`;
+      <p class="go">Click to continue</p>
+      <p class="saved">The game saves itself every morning.</p>
+      <button class="fresh">Start over</button>`;
     this.pause.addEventListener('click', () => G.input.lock());
+    this.pause.querySelector('.fresh')!.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm('Abandon this station and start again from day 1?')) {
+        window.onbeforeunload = null;
+        G.resetting = true;
+        location.search = '?fresh';
+      }
+    });
     window.addEventListener('keydown', (e) => {
       if (!this.overlayOpen) return;
       if (e.code === 'Escape' || e.code === 'KeyR' || e.code === 'Tab') {

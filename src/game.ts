@@ -36,4 +36,6 @@ export const G = {} as {
   /** Seconds of game time elapsed. */
   time: number;
   day: number;
+  /** Set while starting over, so nothing gets saved on the way out. */
+  resetting?: boolean;
 };

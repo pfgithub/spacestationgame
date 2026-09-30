@@ -22,6 +22,7 @@ import { newOrderForm } from './catalog';
 import { EVA } from './eva';
 import { Construction } from './construction';
 import { LifeSupport } from './life';
+import { loadSave, restoreGame, writeSave } from './save';
 
 const app = document.getElementById('app')!;
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
@@ -66,8 +67,20 @@ document.addEventListener('pointerlockchange', () => {
   }
 });
 
-// ---- initial station ----
-function buildInitialStation() {
+// ---- the parts of the station that never change ----
+function buildFixed() {
+  const st = G.station;
+  st.reserved.add(cellKey([0, 0, -2]));
+  for (let y = 1; y < 4; y++) st.reserved.add(cellKey([0, y, 0]));
+  // solar truss above the node
+  const m = stationMats;
+  st.addExteriorBox(new THREE.Vector3(-0.2, 2, -0.2), new THREE.Vector3(0.2, 9.8, 0.2), m.truss);
+  st.addExteriorBox(new THREE.Vector3(-11, 9.8, -0.25), new THREE.Vector3(11, 10.2, 0.25), m.truss);
+  G.power.buildArrays();
+}
+
+// ---- a brand new game ----
+function seedNewGame() {
   const st = G.station;
   st.addModule([0, 0, 0], 'node');
   st.addModule([1, 0, 0], 'lab');
@@ -80,13 +93,6 @@ function buildInitialStation() {
   st.connect([0, 0, 0], 5);
   st.makeDoor([0, 0, 1], 4, 'hatch', false);
   st.makeDoor([0, 0, -1], 5, 'port', false);
-  st.reserved.add(cellKey([0, 0, -2]));
-  for (let y = 1; y < 4; y++) st.reserved.add(cellKey([0, y, 0]));
-
-  // solar truss above the node
-  const m = stationMats;
-  st.addExteriorBox(new THREE.Vector3(-0.2, 2, -0.2), new THREE.Vector3(0.2, 9.8, 0.2), m.truss);
-  st.addExteriorBox(new THREE.Vector3(-11, 9.8, -0.25), new THREE.Vector3(11, 10.2, 0.25), m.truss);
   st.rebuild();
 
   const R = G.racks;
@@ -126,15 +132,28 @@ function buildInitialStation() {
   R.mountRack(R.create('powerpanel'), [0, 0, 0], 3);
   R.mountRack(R.create('lifesupport'), [0, 0, 0], 2);
   stick('manual', new THREE.Vector3(-5.58, 0.3, 0.6), new THREE.Vector3(1, 0, 0));
-  G.power.buildArrays();
 
   // the first vehicle is already docked when you arrive
   G.cargo.arrive([newOrderForm()]);
   G.cargo.dock();
+  G.player.pos.set(0, 0, 0);
 }
-buildInitialStation();
 
-G.player.pos.set(0, 0, 0);
+buildFixed();
+const saved = loadSave();
+if (saved) {
+  try {
+    restoreGame(saved);
+  } catch (e) {
+    console.error('Could not restore the save, starting afresh', e);
+    location.search = '?fresh';
+  }
+} else {
+  seedNewGame();
+}
+G.days.morning.push(() => writeSave());
+window.addEventListener('pagehide', () => writeSave());
+window.addEventListener('beforeunload', () => writeSave());
 
 // ---- interaction ----
 const ray = new THREE.Raycaster();

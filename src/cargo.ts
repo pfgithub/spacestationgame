@@ -83,6 +83,19 @@ export class Cargo {
     return G.station.get(SHIP_CELL);
   }
 
+  /** Restores a saved state. A docked vehicle's cabin is already part of the saved station. */
+  restore(state: Cargo['state'], pos: THREE.Vector3, vehicleNo: number, manifest: Item[], outgoing: Item[]) {
+    this.state = state;
+    this.vehicleNo = vehicleNo;
+    this.manifest = manifest;
+    this.outgoingLetters = outgoing;
+    this.pos.copy(pos);
+    this.mesh.position.copy(pos);
+    this.mesh.visible = state !== 'away';
+    this.cube.visible = state === 'waiting';
+    this.front.visible = state === 'waiting';
+  }
+
   /** A new vehicle arrives and waits at the hold point. */
   arrive(items: Item[]) {
     for (const it of items) G.items.stow(it);

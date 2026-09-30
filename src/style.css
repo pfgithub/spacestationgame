@@ -55,3 +55,6 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .periscope .help { position: absolute; left: 0; right: 0; bottom: 5%; text-align: center; font-size: 14px; opacity: 0.8; }
 .vignette.stale { opacity: 1; animation: throb 3s infinite; }
 @keyframes throb { 50% { opacity: 0.5; } }
+.pause .saved { font-size: 13px; opacity: 0.55; margin: 18px 0 6px; }
+.pause .fresh { font-family: inherit; font-size: 13px; background: none; color: #dfe8f2; border: 1px solid rgba(223,232,242,0.4); padding: 4px 12px; cursor: pointer; opacity: 0.7; }
+.pause .fresh:hover { opacity: 1; }

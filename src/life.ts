@@ -60,14 +60,14 @@ export class LifeSupport {
     return null;
   }
 
-  startLeak() {
+  startLeak(spec?: { cell: [number, number, number]; dir: Dir; u: number; v: number }) {
     const candidates = [...G.station.modules.values()].filter((m) => m.type !== 'airlock' && m.type !== 'ship');
-    const m = candidates[Math.floor(Math.random() * candidates.length)];
+    const m = spec ? G.station.get(spec.cell)! : candidates[Math.floor(Math.random() * candidates.length)];
     const walls = ([0, 1, 2, 3, 4, 5] as Dir[]).filter((d) => m.faces[d] === 'wall');
-    const dir = walls[Math.floor(Math.random() * walls.length)];
+    const dir = spec?.dir ?? walls[Math.floor(Math.random() * walls.length)];
     // somewhere near the edge of the wall, so it isn't hidden behind a rack
-    const u = (Math.random() < 0.5 ? -1 : 1) * (1.2 + Math.random() * 0.25);
-    const v = (Math.random() - 0.5) * 2.4;
+    const u = spec?.u ?? (Math.random() < 0.5 ? -1 : 1) * (1.2 + Math.random() * 0.25);
+    const v = spec?.v ?? (Math.random() - 0.5) * 2.4;
     const mesh = new THREE.Group();
     const hole = new THREE.Mesh(new THREE.CircleGeometry(0.03, 10), new THREE.MeshBasicMaterial({ color: 0x050505 }));
     const frost = new THREE.Mesh(new THREE.RingGeometry(0.03, 0.12, 16), new THREE.MeshBasicMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0.6 }));

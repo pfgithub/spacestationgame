@@ -47,6 +47,9 @@ export function defineItem(kind: ItemKind, def: ItemDef) {
 }
 
 let nextId = 1;
+export function setNextItemId(n: number) {
+  nextId = n;
+}
 
 export class Items {
   list: Item[] = [];
