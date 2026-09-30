@@ -146,7 +146,7 @@ registerDoc('handbook', {
 up and down. Each push adds to your speed in that direction and takes away any drift in other directions.
 Nothing but a wall will stop you going faster and faster. Keep a key held to keep pushing; quick, well-timed pushes
 build speed fastest.</p>
-<p>To stop, push against the way you are going: you will grab on and come to a dead stop, and stay put for as long as
+<p>To stop, push back against the way you are going: you will grab on and come to a dead stop, and stay put for as long as
 you hold on. Q and E roll you around.</p>
 <p>Outside the station there is not always something within reach. That is what the tether is for.</p>
 <h2>Hatches</h2>

@@ -36,7 +36,7 @@ export class UI {
         <div><b>Mouse</b> look</div>
         <div><b>W A S D</b> push off forwards / left / back / right</div>
         <div><b>Space / Shift</b> push off up / down</div>
-        <div><b></b> pushing against your motion stops you dead</div>
+        <div><b></b> pushing back against your motion stops you</div>
         <div><b>Q / E</b> roll</div>
         <div><b>Left click</b> use</div>
         <div><b>Right click</b> grab / place / let go</div>

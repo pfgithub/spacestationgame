@@ -26,10 +26,13 @@ npm run build    # static build into dist/
 ### Pushing off
 
 Each push adds one unit of speed in the key's direction and cancels your motion in every other direction, so
-pushing forwards while drifting sideways straightens you out. Pushing against the way you are moving stops you
-dead, and holding the key keeps you stopped. Hold a key to keep pushing; press a key during a push to abandon it
+pushing forwards while drifting sideways straightens you out. Pushing roughly against the way you are moving
+(more than 120° away from it) stops you dead, and holding the key keeps you stopped. Hold a key to keep pushing; press a key during a push to abandon it
 and start a new one straight away, so well-timed repeated presses are the fastest way to build speed. There is no
 top speed, only walls.
+
+Mouse look behaves like an ordinary first-person game (circling the mouse never rolls you), except that looking
+further up or down than 75° tips your whole frame of reference over, so you can loop right round. Q and E roll.
 
 ## How it plays
 
