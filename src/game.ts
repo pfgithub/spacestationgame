@@ -9,6 +9,7 @@ import type { Items } from './items';
 import type { Racks } from './racks';
 import type { Days } from './days';
 import type { Power } from './power';
+import type { Science } from './science';
 
 /** Global game context, filled in by main.ts. */
 export const G = {} as {
@@ -25,6 +26,7 @@ export const G = {} as {
   racks: Racks;
   days: Days;
   power: Power;
+  science: Science;
   /** Seconds of game time elapsed. */
   time: number;
   day: number;

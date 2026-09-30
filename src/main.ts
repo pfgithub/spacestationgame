@@ -14,6 +14,8 @@ import { Racks } from './racks';
 import { Days } from './days';
 import { Power } from './power';
 import { makePaper } from './docs';
+import { Science } from './science';
+import './experiments';
 
 const app = document.getElementById('app')!;
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
@@ -43,6 +45,7 @@ G.items = new Items();
 G.racks = new Racks();
 G.days = new Days();
 G.power = new Power();
+G.science = new Science();
 
 document.addEventListener('pointerlockchange', () => {
   if (!G.audio && document.pointerLockElement) {
@@ -82,6 +85,19 @@ function buildInitialStation() {
   const welcome = makePaper('welcome');
   G.items.place(welcome, new THREE.Vector3(-0.3, 0.2, -0.9));
   welcome.spin.set(0.1, 0.3, 0.05);
+
+  R.mountRack(R.create('crystal'), [1, 0, 0], 0);
+  R.mountRack(R.create('botany'), [1, 0, 0], 4);
+  R.mountRack(R.create('fluid'), [1, 0, 0], 5);
+  // procedures are velcroed to the lab walls
+  const stick = (doc: string, pos: THREE.Vector3, normal: THREE.Vector3) => {
+    const p = makePaper(doc);
+    p.quat.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
+    G.items.place(p, pos, new THREE.Vector3(), 'stuck');
+  };
+  stick('proc-crystal', new THREE.Vector3(5.2, -1.58, 0.9), new THREE.Vector3(0, 1, 0));
+  stick('proc-botany', new THREE.Vector3(4.2, -1.58, 0.9), new THREE.Vector3(0, 1, 0));
+  stick('proc-fluid', new THREE.Vector3(4.2, -1.58, -0.9), new THREE.Vector3(0, 1, 0));
 }
 buildInitialStation();
 
