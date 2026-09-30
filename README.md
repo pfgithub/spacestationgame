@@ -13,8 +13,8 @@ npm run build    # static build into dist/
 | Key | Action |
 | --- | --- |
 | Mouse | look |
-| W | push off (one push = speed 1, keep holding for speed 2, tap repeatedly to go a bit faster) |
-| S | grab and stop; keep holding to push backwards |
+| W | push off: every push adds one unit of speed, no limit. Holding pushes steadily; tapping pushes again sooner |
+| S | grab: each cycle takes off one unit of speed; once stopped, keep holding to push backwards |
 | Q / E | roll |
 | Left click | use |
 | Right click | grab / place / let go |

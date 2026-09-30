@@ -34,8 +34,8 @@ export class UI {
       <p class="sub">a quiet life aboard a small space station</p>
       <div class="keys">
         <div><b>Mouse</b> look</div>
-        <div><b>W</b> push off (hold / tap repeatedly to go faster)</div>
-        <div><b>S</b> grab &amp; stop (hold to push backwards)</div>
+        <div><b>W</b> push off (each push adds speed; tap to push sooner)</div>
+        <div><b>S</b> slow down (hold to stop, then push backwards)</div>
         <div><b>Q / E</b> roll</div>
         <div><b>Left click</b> use</div>
         <div><b>Right click</b> grab / place / let go</div>

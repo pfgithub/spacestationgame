@@ -5,12 +5,10 @@ import { G } from './game';
 
 /** Duration of the "push" part of a push-off cycle. */
 const PUSH_T = 0.4;
-/** Pause between cycles while the key is held. */
+/** Pause between cycles while the key is held (tapping lets you push again sooner). */
 const HOLD_PAUSE = 0.55;
 /** Minimum pause before a fresh key press can start another cycle. */
 const TAP_PAUSE = 0.12;
-const HOLD_MAX = 2;
-const TAP_MAX = 2.8;
 const REACH = 2.1;
 
 type CycleKind = 'fwd' | 'back';
@@ -55,6 +53,7 @@ export class Player {
   }
 
   private startCycle(kind: CycleKind, held: boolean) {
+    // holding only differs from tapping by the longer pause between cycles
     const f = this.forward;
     const fs = this.vel.dot(f);
     let to: THREE.Vector3;
@@ -64,20 +63,18 @@ export class Player {
       return;
     }
     if (kind === 'fwd') {
-      const cap = held ? HOLD_MAX : TAP_MAX;
-      const cur = Math.max(0, fs / SPEED_UNIT);
-      const level = held ? Math.min(cap, Math.max(1, Math.floor(cur + 0.25) + 1)) : Math.min(cap, Math.max(1, cur + 0.8));
-      to = f.clone().multiplyScalar(level * SPEED_UNIT);
+      // every push adds one unit of speed along the view direction; there is no cap
+      to = this.vel.clone().addScaledVector(f, SPEED_UNIT);
       this.stopped = false;
+    } else if (this.vel.length() > 0.02 && !(held && this.stopped && fs < 0)) {
+      // grab and slow down by up to one unit per cycle
+      const sp = this.vel.length();
+      to = this.vel.clone().multiplyScalar(Math.max(0, sp - SPEED_UNIT) / sp);
+      if (to.lengthSq() === 0) this.stopped = true;
     } else {
-      if (this.vel.length() > 0.15 * SPEED_UNIT && !(held && this.stopped && fs < 0)) {
-        to = new THREE.Vector3();
-        this.stopped = true;
-      } else {
-        const cur = Math.max(0, -fs / SPEED_UNIT);
-        const level = Math.min(held ? 1.5 : 2, Math.max(0.8, cur + 0.7));
-        to = f.clone().multiplyScalar(-level * SPEED_UNIT);
-      }
+      // already stopped (or already backing up while holding): push backwards
+      to = this.vel.clone().addScaledVector(f, -SPEED_UNIT);
+      this.stopped = true;
     }
     this.cycle = { kind, t: 0, from: this.vel.clone(), to };
     this.lastKind = kind;
