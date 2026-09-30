@@ -13,16 +13,23 @@ npm run build    # static build into dist/
 | Key | Action |
 | --- | --- |
 | Mouse | look |
-| W | push off: every push adds one unit of speed, no limit. Holding pushes steadily; tapping pushes again sooner |
-| S | grab: each cycle takes off one unit of speed; once stopped, keep holding to push backwards |
+| W / S | push off forwards / backwards |
 | A / D | push off left / right |
-| Space / Shift | push off up / down (relative to your view) |
+| Space / Shift | push off up / down (all directions are relative to your view) |
 | Q / E | roll |
 | Left click | use |
 | Right click | grab / place / let go |
 | R | read the paper you are holding |
 | T or left click | clip tether to the yellow ring you are looking at (spacewalk) |
 | F (hold) | reel in tether |
+
+### Pushing off
+
+Each push adds one unit of speed in the key's direction and cancels your motion in every other direction, so
+pushing forwards while drifting sideways straightens you out. Pushing against the way you are moving stops you
+dead, and holding the key keeps you stopped. Hold a key to keep pushing; press a key during a push to abandon it
+and start a new one straight away, so well-timed repeated presses are the fastest way to build speed. There is no
+top speed, only walls.
 
 ## How it plays
 

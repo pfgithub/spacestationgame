@@ -3,31 +3,27 @@ import { SPEED_UNIT } from './constants';
 import { collideSphere, nearestSurfaceDist } from './physics';
 import { G } from './game';
 
-/** Duration of the "push" part of a push-off cycle. */
+/** Duration of one push. Acceleration follows a smoothstep curve, strongest in the middle of the push. */
 const PUSH_T = 0.4;
-/** Pause between cycles while the key is held (tapping lets you push again sooner). */
-const HOLD_PAUSE = 0.55;
-/** Minimum pause before a fresh key press can start another cycle. */
-const TAP_PAUSE = 0.12;
+/** Pause before pushing again while a key is held. A fresh key press never waits. */
+const HOLD_PAUSE = 0.35;
 const REACH = 2.1;
 
-type CycleKind = 'fwd' | 'back' | 'left' | 'right' | 'up' | 'down';
-
-/** Keys that start push-off cycles. S is special: it grabs/slows first and only pushes backwards once stopped. */
-const PUSH_KEYS: [string, CycleKind][] = [
-  ['KeyW', 'fwd'],
-  ['KeyS', 'back'],
-  ['KeyA', 'left'],
-  ['KeyD', 'right'],
-  ['Space', 'up'],
-  ['ShiftLeft', 'down'],
-  ['ShiftRight', 'down'],
+/** Push keys and the view-relative direction each pushes you in. */
+const PUSH_KEYS: [string, [number, number, number]][] = [
+  ['KeyW', [0, 0, -1]],
+  ['KeyS', [0, 0, 1]],
+  ['KeyA', [-1, 0, 0]],
+  ['KeyD', [1, 0, 0]],
+  ['Space', [0, 1, 0]],
+  ['ShiftLeft', [0, -1, 0]],
+  ['ShiftRight', [0, -1, 0]],
 ];
 
-interface Cycle {
-  kind: CycleKind;
+interface Push {
+  key: string;
   t: number;
-  /** Total velocity change this cycle applies, spread over the push. */
+  /** Total velocity change this push applies, spread over its duration. */
   delta: THREE.Vector3;
   eased: number;
 }
@@ -38,14 +34,11 @@ export class Player {
   quat = new THREE.Quaternion();
   radius = 0.3;
   rollVel = 0;
-  cycle: Cycle | null = null;
-  /** Time since the last cycle ended. */
+  push: Push | null = null;
+  /** Time since the last push ended. */
   idle = 10;
-  /** A key press that arrived while a cycle was still running. */
-  queued: CycleKind | null = null;
-  lastKind: CycleKind | null = null;
-  /** Set when an S-cycle brought us to a stop, so the next held cycle reverses. */
-  stopped = false;
+  /** A key whose push brought us to a stop: it won't push again until released. */
+  blockedKey: string | null = null;
   frozen = false;
   /** Extra velocity sources (tether) add here. */
   mouseSens = 0.0022;
@@ -64,36 +57,28 @@ export class Player {
     return nearestSurfaceDist(this.pos, G.station.boxes()) < REACH;
   }
 
-  private startCycle(kind: CycleKind, held: boolean) {
-    // holding only differs from tapping by the longer pause between cycles
-    const f = this.forward;
-    const fs = this.vel.dot(f);
-    let to: THREE.Vector3;
+  /**
+   * Starts a push for a key. Pushing adds one unit of speed in that direction and cancels motion in every other
+   * direction. If we're moving against that direction, the push brings us to a complete stop instead.
+   * Starting a push abandons any push still in progress (keeping the speed it has already given).
+   */
+  private startPush(key: string, local: [number, number, number]) {
     if (!this.canPush()) {
       G.ui.toast('Nothing within reach to push off');
+      this.push = null;
       this.idle = 0;
       return;
     }
-    const dirs: Partial<Record<CycleKind, THREE.Vector3>> = {
-      fwd: f, left: this.right.negate(), right: this.right, up: this.up, down: this.up.negate(),
-    };
-    const pushDir = dirs[kind];
-    if (pushDir) {
-      // every push adds one unit of speed in that direction; there is no cap
-      to = this.vel.clone().addScaledVector(pushDir, SPEED_UNIT);
-      this.stopped = false;
-    } else if (this.vel.length() > 0.02 && !(held && this.stopped && fs < 0)) {
-      // grab and slow down by up to one unit per cycle
-      const sp = this.vel.length();
-      to = this.vel.clone().multiplyScalar(Math.max(0, sp - SPEED_UNIT) / sp);
-      if (to.lengthSq() === 0) this.stopped = true;
+    const dir = new THREE.Vector3(...local).applyQuaternion(this.quat);
+    const along = this.vel.dot(dir);
+    let target: THREE.Vector3;
+    if (along < -0.05) {
+      target = new THREE.Vector3();
+      this.blockedKey = key;
     } else {
-      // already stopped (or already backing up while holding): push backwards
-      to = this.vel.clone().addScaledVector(f, -SPEED_UNIT);
-      this.stopped = true;
+      target = dir.multiplyScalar(Math.max(0, along) + SPEED_UNIT);
     }
-    this.cycle = { kind, t: 0, delta: to.sub(this.vel), eased: 0 };
-    this.lastKind = kind;
+    this.push = { key, t: 0, delta: target.sub(this.vel), eased: 0 };
     G.audio?.push();
   }
 
@@ -110,43 +95,42 @@ export class Player {
     const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, this.rollVel * dt, 'YXZ'));
     this.quat.multiply(q).normalize();
 
-    // --- push-off cycles ---
-    let heldKind: CycleKind | null = null;
-    for (const [key, kind] of PUSH_KEYS) {
-      if (inp.wasPressed(key)) this.queued = kind;
-      if (inp.isDown(key) && (!heldKind || kind === this.lastKind)) heldKind = kind;
+    // --- pushing ---
+    if (this.blockedKey && !inp.isDown(this.blockedKey)) this.blockedKey = null;
+    let pressed: (typeof PUSH_KEYS)[number] | null = null;
+    let held: (typeof PUSH_KEYS)[number] | null = null;
+    for (const entry of PUSH_KEYS) {
+      if (inp.wasPressed(entry[0])) pressed = entry;
+      if (inp.isDown(entry[0]) && entry[0] !== this.blockedKey && (!held || entry[0] === this.push?.key)) held = entry;
     }
-    if (this.cycle) {
-      const c = this.cycle;
-      c.t += dt;
-      const k = Math.min(1, c.t / PUSH_T);
+    if (pressed) {
+      this.startPush(pressed[0], pressed[1]);
+    } else if (!this.push && held && this.idle >= HOLD_PAUSE) {
+      this.startPush(held[0], held[1]);
+    }
+    if (this.push) {
+      const p = this.push;
+      p.t += dt;
+      const k = Math.min(1, p.t / PUSH_T);
       const e = k * k * (3 - 2 * k);
       // apply this frame's share of the push, keeping any other forces (tether, collisions)
-      this.vel.addScaledVector(c.delta, e - c.eased);
-      c.eased = e;
+      this.vel.addScaledVector(p.delta, e - p.eased);
+      p.eased = e;
       if (k >= 1) {
-        this.cycle = null;
+        this.push = null;
         this.idle = 0;
       }
     } else {
       this.idle += dt;
-      if (this.queued && this.idle >= TAP_PAUSE) {
-        const kind = this.queued;
-        this.queued = null;
-        this.startCycle(kind, false);
-      } else if (this.idle >= HOLD_PAUSE && heldKind) {
-        this.startCycle(heldKind, heldKind === this.lastKind);
-      }
     }
-    if (!heldKind && !this.cycle) this.stopped = this.vel.length() < 0.05;
 
     // --- integrate ---
     this.pos.addScaledVector(this.vel, dt);
     const impact = collideSphere(this.pos, this.vel, this.radius, G.station.boxes());
     if (impact > 0.6) G.audio?.bump(impact);
-    if (impact > 0 && this.cycle) {
+    if (impact > 0 && this.push) {
       // hit something mid-push: abort the push
-      this.cycle = null;
+      this.push = null;
       this.idle = 0;
     }
   }

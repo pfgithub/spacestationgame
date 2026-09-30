@@ -142,11 +142,12 @@ registerDoc('handbook', {
 <h2>Moving about</h2>
 <p>There is no up or down aboard. The blue-grey deck panels mark "down" in every module, and the pale panels mark
 "up", to help you keep your bearings.</p>
-<p>You move by pushing off whatever is nearest. Each push (W) adds to your speed, and nothing but a wall will stop you
-from going faster and faster. Holding W pushes again every second or so; quick repeated pushes add speed sooner.
-A and D push you left and right, Space and Shift up and down.</p>
-<p>To slow down, grab a handrail (S). Each grab takes off some speed; keep holding on and you will come to a stop,
-and then push off backwards. Q and E roll you around.</p>
+<p>You move by pushing off whatever is nearest: W forwards, S backwards, A and D left and right, Space and Shift
+up and down. Each push adds to your speed in that direction and takes away any drift in other directions.
+Nothing but a wall will stop you going faster and faster. Keep a key held to keep pushing; quick, well-timed pushes
+build speed fastest.</p>
+<p>To stop, push against the way you are going: you will grab on and come to a dead stop, and stay put for as long as
+you hold on. Q and E roll you around.</p>
 <p>Outside the station there is not always something within reach. That is what the tether is for.</p>
 <h2>Hatches</h2>
 <p>Every module is separated from its neighbours by a hatch. They are normally left open. Close a hatch with
