@@ -394,8 +394,7 @@ Take the brush out through the airlock, climb the mast using the tether rings, a
 <p>Each module is fed through a fuse on the POWER DISTRIBUTION panel: NODE, LAB, HAB, AIRLOCK, DOCK, and AUX (all
 modules added after launch share AUX). A blown fuse cuts off the lights and racks of its module; the rest of the
 station is unaffected.</p>
-<p>A blown fuse looks <b>black</b> through its glass. Pull it out (left click) and put in a spare (right click while
-holding it). Spares are kept in stowage and can be ordered. Send blown fuses home with the cargo vehicle.</p>
+<p>A blown fuse looks <b>black</b> through its glass. Pull it out and put in a spare (both right click, like picking things up and putting them down). Spares are kept in stowage and can be ordered. Send blown fuses home with the cargo vehicle.</p>
 
 <h2>&sect;3 Carbon dioxide</h2>
 <p>The CO<sub>2</sub> scrubber on the LIFE SUPPORT panel in NODE 1 uses replaceable cartridges. A cartridge lasts about four

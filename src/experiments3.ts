@@ -772,8 +772,7 @@ export class CombustionRack extends Experiment {
         G.items.remove(item);
         this.fuel = true;
         G.audio?.click();
-      },
-      { label: () => (this.fuel ? 'A fuel cartridge is loaded' : null), use: () => {} });
+      });
     text(this.group, 'MODEL CC-3 · 28V', -0.55, -0.95, 0.6, 0.06, '#333');
   }
 

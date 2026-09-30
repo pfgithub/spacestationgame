@@ -76,7 +76,7 @@ export function toggle(parent: THREE.Object3D, x: number, y: number, label: stri
   return { sync };
 }
 
-/** Rotary dial with n positions labelled 1..n (or custom). LMB turns clockwise, RMB counter-clockwise. */
+/** Rotary dial with n positions labelled 1..n (or custom). Each click turns it one step, wrapping round. */
 export function dial(parent: THREE.Object3D, x: number, y: number, label: string, n: number, get: () => number, set: (v: number) => void, names?: string[]) {
   const g = new THREE.Group();
   g.position.set(x, y, 0.05);
@@ -103,15 +103,10 @@ export function dial(parent: THREE.Object3D, x: number, y: number, label: string
   sync();
   const nm = (v: number) => names?.[v] ?? String(v + 1);
   setInteract(g, {
-    label: () => `Turn ${label} (${nm(get())}) up`,
+    // one click per step; past the last position it comes back round to the first
+    label: () => `Turn ${label} (at ${nm(get())}) to ${nm((get() + 1) % n)}`,
     use: () => {
-      set(Math.min(n - 1, get() + 1));
-      G.audio?.click();
-      sync();
-    },
-    altLabel: () => `Turn ${label} down`,
-    alt: () => {
-      set(Math.max(0, get() - 1));
+      set((get() + 1) % n);
       G.audio?.click();
       sync();
     },
@@ -179,10 +174,13 @@ export function gauge(parent: THREE.Object3D, x: number, y: number, label: strin
   };
 }
 
-/** A slot that accepts a held item of a certain kind. */
+/**
+ * A slot that things are put into and taken out of. Both are right click, like picking up and letting go:
+ * `accept` handles putting the held item in, `take` taking something out into empty hands.
+ */
 export function slot(parent: THREE.Object3D, x: number, y: number, w: number, h: number, label: string,
   accept: (item: import('./items').Item) => string | null, onAccept: (item: import('./items').Item) => void,
-  extra: import('./interact').Interactable = {}) {
+  take: { label: () => string | null; use: () => void } | null = null) {
   const g = new THREE.Group();
   g.position.set(x, y, 0.05);
   const frame = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.03), M.metal);
@@ -192,7 +190,8 @@ export function slot(parent: THREE.Object3D, x: number, y: number, w: number, h:
   if (label) text(g, label, 0, -h / 2 - 0.04, Math.max(w, 0.3), 0.05).position.z = 0;
   parent.add(g);
   setInteract(g, {
-    ...extra,
+    altLabel: take?.label,
+    alt: take?.use,
     acceptLabel: accept,
     accept: onAccept,
   });
