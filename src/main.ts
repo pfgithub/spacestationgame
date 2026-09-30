@@ -235,6 +235,7 @@ function frame(now: number) {
   G.ui.setStatus(`Day ${G.day}<br>${mod ? mod.name : 'OUTSIDE'}${held}${G.eva.status()}`);
   G.ui.update();
   renderer.render(scene, camera);
+  if (!G.cargo.docking) G.items.renderHeld(renderer);
   G.input.endFrame();
   requestAnimationFrame(frame);
 }

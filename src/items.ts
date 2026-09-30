@@ -56,10 +56,21 @@ export class Items {
   group = new THREE.Group();
   held: Item | null = null;
   holdAnchor = new THREE.Group();
+  /** What you hold is drawn in its own pass on top of the world, so it never sinks into walls. */
+  heldScene = new THREE.Scene();
+  heldCam: THREE.PerspectiveCamera;
 
   constructor() {
     G.scene.add(this.group);
-    G.camera.add(this.holdAnchor);
+    this.heldCam = G.camera.clone();
+    this.heldCam.position.set(0, 0, 0);
+    this.heldCam.quaternion.identity();
+    this.heldScene.add(this.heldCam);
+    this.heldCam.add(this.holdAnchor);
+    this.heldScene.add(new THREE.HemisphereLight(0xf4f8ff, 0x55606a, 2.2));
+    const key = new THREE.DirectionalLight(0xffffff, 1.2);
+    key.position.set(1, 2, 1);
+    this.heldScene.add(key);
     this.holdAnchor.position.set(0.32, -0.26, -0.6);
   }
 
@@ -132,7 +143,7 @@ export class Items {
     // big things are shown smaller in hand
     const box = new THREE.Box3().setFromObject(item.mesh);
     const size = box.getSize(new THREE.Vector3()).length();
-    item.mesh.scale.setScalar(size > 0.5 ? 0.5 / size : 1);
+    item.mesh.scale.setScalar(size > 0.5 ? 0.4 / size : 1);
     this.held = item;
     G.audio?.click();
   }
@@ -143,6 +154,7 @@ export class Items {
     if (!item) return null;
     this.holdAnchor.remove(item.mesh);
     item.mesh.scale.setScalar(1);
+
     this.held = null;
     return item;
   }
@@ -208,6 +220,17 @@ export class Items {
       item.mesh.position.copy(item.pos);
       item.mesh.quaternion.copy(item.quat);
     }
+  }
+
+  renderHeld(renderer: THREE.WebGLRenderer) {
+    if (!this.held) return;
+    this.heldCam.aspect = G.camera.aspect;
+    this.heldCam.fov = G.camera.fov;
+    this.heldCam.updateProjectionMatrix();
+    renderer.autoClear = false;
+    renderer.clearDepth();
+    renderer.render(this.heldScene, this.heldCam);
+    renderer.autoClear = true;
   }
 
   readHeld() {
