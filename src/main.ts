@@ -19,6 +19,7 @@ import './experiments';
 import { Cargo } from './cargo';
 import { newOrderForm } from './catalog';
 import { EVA } from './eva';
+import { Construction } from './construction';
 
 const app = document.getElementById('app')!;
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
@@ -52,6 +53,7 @@ G.science = new Science();
 G.cargo = new Cargo();
 G.days.nightly.push(() => G.cargo.night());
 G.eva = new EVA();
+new Construction();
 
 document.addEventListener('pointerlockchange', () => {
   if (!G.audio && document.pointerLockElement) {

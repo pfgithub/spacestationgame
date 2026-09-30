@@ -47,6 +47,9 @@ export const MODULE_NAMES: Record<ModuleType, string> = {
   ship: 'CARGO VEHICLE',
 };
 
+/** Half size of a window opening. */
+const WINDOW = 1.2;
+
 function planarUVs(geom: THREE.BufferGeometry, scale: number) {
   const pos = geom.attributes.position;
   const nor = geom.attributes.normal;
@@ -242,6 +245,7 @@ export class Station {
     for (const m of this.modules.values()) this.buildModule(m);
     for (const door of this.doors.values()) this.buildDoor(door);
     this.staticBoxes.push(...this.extraBoxes);
+    this.group.updateMatrixWorld(true);
     for (const f of this.onRebuild) f();
   }
 
@@ -255,8 +259,9 @@ export class Station {
       const ua = (ax + 1) % 3, va = (ax + 2) % 3;
       const ue = slabExtents(ax, ua), ve = slabExtents(ax, va);
       const hole = kind !== 'wall';
+      const H = kind === 'window' ? WINDOW : HOLE;
       const pieces: [number, number, number, number][] = hole
-        ? [[-ue, -HOLE, -ve, ve], [HOLE, ue, -ve, ve], [-HOLE, HOLE, -ve, -HOLE], [-HOLE, HOLE, HOLE, ve]]
+        ? [[-ue, -H, -ve, ve], [H, ue, -ve, ve], [-H, H, -ve, -H], [-H, H, H, ve]]
         : [[-ue, ue, -ve, ve]];
       const matArr: THREE.Material[] = [];
       for (let i = 0; i < 6; i++) matArr.push(mats.frame);
@@ -273,13 +278,13 @@ export class Station {
         this.staticBoxes.push(aabb(min.clone().add(C), max.clone().add(C)));
       }
       if (kind === 'window') {
-        const glass = new THREE.Mesh(new THREE.PlaneGeometry(HOLE * 2, HOLE * 2), mats.glass);
+        const glass = new THREE.Mesh(new THREE.PlaneGeometry(WINDOW * 2, WINDOW * 2), mats.glass);
         glass.position.copy(faceVec(d, HALF_OUT - 0.05, 0, 0));
         glass.quaternion.copy(faceQuat(d));
         glass.userData.solid = false;
         m.group.add(glass);
-        const a = faceVec(d, HALF_IN + 0.05, -HOLE, -HOLE).add(C);
-        const b = faceVec(d, HALF_OUT, HOLE, HOLE).add(C);
+        const a = faceVec(d, HALF_IN + 0.05, -WINDOW, -WINDOW).add(C);
+        const b = faceVec(d, HALF_OUT, WINDOW, WINDOW).add(C);
         this.staticBoxes.push(aabb(a.clone().min(b), a.clone().max(b)));
       }
     }
